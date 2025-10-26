@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=67.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supertrend"
+version = "0.1.0"
+description = "基于 LongPort OpenAPI 的超级趋势交易回测工具。"
+authors = [
+  { name = "Shawn", email = "shawn@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "longport>=3.0.0",
+  "pandas>=2.3.0",
+  "numpy>=2.2.0",
+  "matplotlib>=3.8.0",
+  "pydantic>=1.10.0",
+  "pandas-ta>=0.4.0b0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "ipykernel",
+  "black",
+  "isort"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["supertrend"]

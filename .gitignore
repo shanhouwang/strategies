@@ -1,0 +1,23 @@
+# Ignore all dotfiles and dotdirectories (files and directories starting with dot)
+.*
+**/.*
+
+# Keep this file tracked
+!.gitignore
+
+# Explicitly ignore Python virtual environments
+.venv/
+venv/
+**/.venv/
+**/venv/
+
+# Optional: common Python noise (safe to keep out of git)
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# macOS Finder files
+.DS_Store
+**/.DS_Store
