@@ -1,0 +1,55 @@
+//@version=5
+strategy('动量指标策略', overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value =100, slippage=1, commission_type=strategy.commission.percent, commission_value=.05, initial_capital=1000)
+
+a = input(10, "Percent K Length")
+b = input(3, "Percent D Length")
+// ob = input(40, "Overbought")
+os = input(-40, "Oversold")
+
+atrPeriod = input.int(100,    "ATR Length", minval = 1)
+factor =    input.float(30, "Factor",     minval = 0.01, step = 0.01)
+
+tp =    input.float(1.02, "止盈倍数")
+
+[supertrend, direction] = ta.supertrend(factor, atrPeriod)
+
+supertrend := barstate.isfirst ? na : supertrend
+// plot(direction < 0 ? supertrend : na, "Up Trend",   color = color.green, style = plot.style_linebr)
+// Range Calculation
+ll = ta.lowest (low, a)
+hh = ta.highest (high, a)
+diff = hh - ll
+rdiff = close - (hh+ll)/2
+
+avgrel = ta.ema(ta.ema(rdiff,b),b)
+avgdiff = ta.ema(ta.ema(diff,b),b)
+// SMI calculations
+SMI = avgdiff != 0 ? (avgrel/(avgdiff/2)*100) : 0
+SMIsignal = ta.ema(SMI,b)
+emasignal = ta.ema(SMI, 10)
+
+h0 = hline(40)
+h1 = hline(-40) 
+
+// plot(SMIsignal, title="Stochastic", color=color.white)
+
+
+where1 = ta.crossover(SMIsignal,os)
+where2 = direction < 0
+// where3 = ta.crossover(emasignal, SMIsignal)
+
+if where1 and where2
+    strategy.entry("long", strategy.long)
+    // 计算开仓价格的1%以上的价格
+    takeProfitPrice = strategy.opentrades.entry_price(0) * tp
+    // 计算开仓价格的0.99倍的价格，用于止损
+    stopLossPrice = strategy.opentrades.entry_price(0) * 0.9
+    // 设置止盈
+    strategy.exit("takeProfit", "long", limit = takeProfitPrice)
+    // strategy.exit("takeProfit", "long", trail_price  = takeProfitPrice, trail_offset=close * 0.1 / syminfo.mintick / 100)
+
+
+
+
+if direction > 0
+    strategy.close_all('趋势结束，平仓')

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from typing import Any
+from pathlib import Path
 
 import pandas as pd
 
@@ -49,3 +50,17 @@ def candles_to_dataframe(candles: Iterable) -> pd.DataFrame:
     frame = pd.DataFrame(rows).sort_values("timestamp").reset_index(drop=True)
     frame.set_index("timestamp", inplace=True)
     return frame
+
+# 追加：本地CSV读写工具
+
+def dataframe_to_csv(frame: pd.DataFrame, path: str | Path) -> None:
+    """Save price dataframe to CSV including timestamp index."""
+    frame.to_csv(path, index=True, index_label="timestamp")
+
+
+def dataframe_from_csv(path: str | Path) -> pd.DataFrame:
+    """Load price dataframe from CSV and restore timestamp index."""
+    df = pd.read_csv(path, parse_dates=["timestamp"])  # tz-aware strings preserved
+    df = df.sort_values("timestamp").reset_index(drop=True)
+    df.set_index("timestamp", inplace=True)
+    return df

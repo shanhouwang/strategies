@@ -1,0 +1,62 @@
+//@version=5
+strategy("SVIX Bollinger Bands Strategy V2", overlay=true, initial_capital = 10000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100)
+import TradingView/ta/5
+import derekren321/Utility/8 as util
+
+enableStopLoss = input.bool(true)
+
+haClose = 0.25 * (open + high + low + close)
+haOpen = 0.5 * (open[1] + close[1])
+haHigh = math.max(high, open, close)
+haLow = math.min(low, open, close)
+
+source = haClose
+
+// Bollinger Settings
+bollLength = input.int(21, minval=1)
+bollMult = input.float(2.25, minval=0.001, maxval=50)
+
+bollDev = bollMult * ta.stdev(source, bollLength)
+bollBasis = ta.sma(source, bollLength)
+bollUpper = bollBasis + 0.9 * bollDev
+bollLower = bollBasis - bollDev
+
+// KC Settings
+kcLength = input.int(26, minval=1)
+kcMult = input.float(2.15, minval=0.001, maxval=50)
+kcUseHaTr = input.bool(false) // ta.tr result in better result somehow
+
+kcTr = kcUseHaTr ? 
+  math.max(haHigh - haLow, math.abs(haHigh - haClose[1]), math.abs(haLow - haClose[1])) :
+  math.max(high - low, math.abs(high - close[1]), math.abs(low - close[1]))
+kcSpanEma = ta.ema(kcTr, kcLength)
+kcBasis = ta.ema(source, kcLength)
+kcUpper = kcBasis + (0.9 * kcSpanEma * kcMult)
+kcLower = kcBasis - (kcSpanEma * kcMult)
+
+// TODO: KC Boll Squeeze
+
+// Plots
+plot(bollBasis, color=color.purple)
+plot(bollUpper, color=color.blue)
+plot(bollLower, color=color.blue)
+
+plot(kcBasis, color=color.yellow)
+plot(kcUpper, color=color.lime)
+plot(kcLower, color=color.lime)
+
+// Conditions
+buyCond1 = ta.crossover(source, bollLower)
+
+sellCond1 = ta.crossunder(source, math.max(bollUpper, kcUpper)) // Consider crossover, sellCond1 := ta.crossunder(source, bollUpper)
+
+// TODO: Add trailing take profit
+// trailCond1 = ta.crossover(haHigh, math.min(bollUpper, kcUpper))
+
+if buyCond1
+  strategy.entry("Enter Long", strategy.long, stop=bollLower, oca_name="BollingerBands")
+  if enableStopLoss
+    strategy.exit("Long Stop Loss", from_entry = "Enter Long", stop = haClose * 0.95)
+
+if sellCond1
+  strategy.close_all()

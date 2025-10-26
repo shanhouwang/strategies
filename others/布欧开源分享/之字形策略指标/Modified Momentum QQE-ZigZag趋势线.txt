@@ -1,0 +1,142 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//@version=5
+
+indicator("Modified Momentum QQE-ZigZag [Non Repaint During Candle Building]", overlay = true, max_labels_count = 500)
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Input: RSI-QQE ZigZag
+r1_type = input.string("Wilders", title = "Rsi-Type", options = ["Cutlers", "Wilders"], group = "ZigZag", inline = "R_0", tooltip = 'Choose between Cutlers and Wilders RSI')
+
+r1_len = input.int(14, title = "Rsi-Len", group = "ZigZag", inline = "R_2")
+r1_mtf = input.int(2, title = "Mtf-Mult", group = "ZigZag", inline = "R_2", tooltip = "==> Rsi-Len: Set the Length for the RSI\n==> Mtf-Mult: Length Multiplier for RSI to get MTF Resolution")
+
+r1_mult = input.float(3, title = "QQe-Mult", group = "ZigZag", inline = "Q_1")
+r1_smooth = input.int(1, title = "Smooth", group = "ZigZag", inline = "Q_1", tooltip = "==> QQE-Mult: Set the distance between QQE and RSI (works similar like Supertrend Mult)\n==> Rsi-Smooth: Smooth the Rsi with EMA")
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Input: Supertrend
+s1_show = input.bool(true, title = "Show-Supertrend", group = "Supertrend", inline = "S_00")
+
+s1_len = input.int(34, title = "Ma-Len", group = "Supertrend", inline = "S_1")
+s1_type = input.string("EMA", title = "Ma-Type", options = ["SMA", "EMA", "HH / LL"], group = "Supertrend", inline = "S_1", tooltip = "==> MA-Len: Set the Length for the Base of the Supertend\n==> MA-Type: Choose the Base Type for the Supertrend")
+
+s1_atr_len = input.int(34, title = "Atr-Len", group = "Supertrend", inline = "S_2")
+s1_atr_mult = input.float(4.25, title = "Atr-Mult", group = "Supertrend", inline = "S_2", tooltip = "==> Atr-Len: Set the Length for the Atr\n==> Atr:Mult: Set the Multiplier for the ATR")
+
+s1_incl = input.bool(true, title = "Include-ZigZag", group = "Supertrend", inline = "S_0", tooltip = "Wanna include the ZigZag in the Supertrend calculation?")
+
+s1_bull = input.color(color.green, title = "UpTrend", group = "Supertrend", inline = "S_3")
+s1_bear = input.color(color.red, title = "DownTrend", group = "Supertrend", inline = "S_3")
+s1_line = input.int(1, title = "Line", group = "Supertrend", inline = "S_3")
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+
+//- Functions -//
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Function: Modified MTF Relative Strength Index
+f_rsi(_src, _len, _mtf, _type)=>
+
+    _change = _src - _src[_mtf]
+    
+    _up = math.max(_change, 0)
+    _down = (-math.min(_change, 0))
+    
+    _up_change = _type == "Wilders" ? ta.rma(_up, (_len * _mtf)) :
+                 _type == "Cutlers" ? ta.sma(_up, (_len * _mtf)) : na
+
+    _down_change = _type == "Wilders" ? ta.rma(_down, (_len * _mtf)) :
+                   _type == "Cutlers" ? ta.sma(_down, (_len * _mtf)) : na
+    
+    _rsi = _down_change == 0 ? 100 : 
+           _up_change == 0 ? 0 : 
+           100 - (100 / (1 + _up_change / _down_change))
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Function: ZigZag
+f_zz(_dir, _high, _low)=>
+
+    _up = _dir == 1
+    _down = _dir == -1
+    
+    _peak = 0.0
+    _peak := _high > _peak[1] and _up or _down[1] and _up ? _high : 
+             nz(_peak[1])
+
+    _bottom = 0.0
+    _bottom := _low < _bottom[1] and _down or _up[1] and _down ? _low : 
+               nz(_bottom[1])
+
+    _zz = _up and _down[1] ? _bottom[1] : 
+          _up[1] and _down ? _peak[1] : na
+    _top = _down and _up[1] ? _peak[1] : na
+    _bot = _up and _down[1] ? _bottom[1] : na
+    [_zz, _top, _bot]
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Function: Modified QQE 
+f_qqe(_len, _mtf, _type, _smooth, _atr_mult)=>
+    
+    _wilders =  _len * 2 - 1 
+    
+    _up = 0.0
+    _up_rsi = f_rsi(low, _len, _mtf, _type)
+    _up_ema = ta.ema(_up_rsi, _smooth)
+    _up_atr = math.abs(_up_ema[1] - _up_ema)
+    _up_diff = ta.ema(ta.ema(_up_atr, _wilders), _wilders) * _atr_mult
+    _up_ma = _up_ema - _up_diff
+    _up := _up_ema[1] > _up[1] and _up_ema > _up[1] ? math.max(_up_ma, _up[1]) : _up_ma
+    
+    _dn = 0.0
+    _dn_rsi = f_rsi(high, _len, _mtf, _type)
+    _dn_ema = ta.ema(_dn_rsi, _smooth)
+    _dn_atr = math.abs(_dn_ema[1] - _dn_ema)
+    _dn_diff = ta.ema(ta.ema(_dn_atr, _wilders), _wilders) * _atr_mult
+    _dn_ma = _dn_ema + _dn_diff
+    _dn := _dn_ema[1] < _dn[1] and _dn_ema < _dn[1] ? math.min(_dn_ma, _dn[1]) : _dn_ma
+    
+    _trend = 0
+    _trend := ta.crossover(_dn_ema, _dn[1]) ? 1 : 
+              ta.crossunder(_up_ema, _up[1]) ? -1 : 
+              nz(_trend[1], _trend)
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Function: Supertrend
+f_supertrend(_top, _bot, _incl, _len, _type, _atr_len, _atr_mult)=>
+    
+    _atr = ta.atr(_atr_len) * _atr_mult
+    
+    _up_ma = _type == "EMA" ? ta.ema(low[1], _len) : 
+             _type == "SMA" ? ta.sma(low[1], _len) : 
+             _type == "HH / LL" ? ta.lowest(low[1], _len) : na
+    _up_b = _incl ? _bot[1] - _atr : na
+    _up = _up_ma - _atr
+    _up := low[1] > _up[1] ? math.max(_up, _up[1], nz(_up_b, _up - 1)) : _up
+    
+    _dn_ma = _type == "EMA" ? ta.ema(high[1], _len) : 
+             _type == "SMA" ? ta.sma(high[1], _len) : 
+             _type == "HH / LL" ? ta.highest(high[1], _len) : na
+    _dn_t = _incl ? _top[1] + _atr : na
+    _dn = _dn_ma + _atr
+    _dn := high[1] < _dn[1] ? math.min(_dn, _dn[1], nz(_dn_t, _dn + 1)) : _dn
+    
+    _trend = 0
+    _trend := ta.crossover(high[1], _dn[1]) ? 1 :
+              ta.crossunder(low[1], _up[1]) ? -1 :
+              nz(_trend[1], _trend)
+    [_trend, _up, _dn]
+
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Calc: Rsi QQE ZigZag 
+qqe_trend = f_qqe(r1_len, r1_mtf, r1_type, r1_smooth, r1_mult)
+[zz, zz_top, zz_bot] = f_zz(qqe_trend, high, low)
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+
+// Calc: Supertrend
+[s_trend, s_up, s_dn] = f_supertrend(zz_top, zz_bot, s1_incl, s1_len, s1_type, s1_atr_len, s1_atr_mult)
+
+st_up = s_trend == 1 ? s_up : na
+st_dn = s_trend == -1 ? s_dn : na
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//
+// Draw: Supertrend
+plot(s1_show ? st_up : na, title = "Up-Trend", color = s1_bull, linewidth = s1_line, editable = true, style = plot.style_linebr)
+plot(s1_show ? st_dn : na, title = "Down-Trend", color = s1_bear, linewidth = s1_line, editable = true, style = plot.style_linebr)
+//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------//

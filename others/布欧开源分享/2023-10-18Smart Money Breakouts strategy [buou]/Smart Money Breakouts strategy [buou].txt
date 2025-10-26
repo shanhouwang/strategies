@@ -1,0 +1,279 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ChartPrime
+//@version=5
+strategy('Smart Money Breakouts strategy [buou]', shorttitle="Smart Money Breakouts strategy [buou]", overlay=true, precision=2, pyramiding=1, 
+ calc_on_every_tick=true, backtest_fill_limits_assumption=1, default_qty_type=strategy.percent_of_equity, default_qty_value = 50, currency=currency.USD, slippage=1, commission_type=strategy.commission.percent,
+ commission_value=.03, process_orders_on_close=true, initial_capital=10000, margin_long=100, margin_short=100)
+
+color GREEN           = color.rgb(2, 133, 69)
+color TAIL            = color.rgb(20, 141, 154)
+color RED             = color.rgb(246, 7, 7)
+color _Green          = color.rgb(2, 106, 89)
+color OFF             = color.new(color.red,100)
+string CORE           =  "➞ Core Settings 🔸"
+var array<int> score  = array.new_int(2,0)
+//
+var float UpdatedHigh = na
+var float UpdatedLow  = na
+var bool ShortTrade   = false
+var bool TradeisON    = false
+var bool LongTrade    = false
+var int HighIndex     = na
+var bool phActive     = false
+var bool plActive     = false
+var int LowIndex      = na
+var bool HBreak       = false
+var line tpLine       = na
+var label LAB         = na
+var float TP          = 0.0
+var float SL          = 0.0
+int Sync              = bar_index
+bool BUY              = false
+bool SELL             = false
+
+
+
+type Vol
+    array<float> Total
+    array<float> Green
+    array<float> Red
+    array<float> SCR
+
+Volume = Vol.new(
+     array.new_float(),
+     array.new_float(),
+     array.new_float(),
+     array.new_float()
+
+     )
+
+int period            = input.int(20, 'Length',group = CORE,tooltip = "Swing Length")
+bool CandleType      = input.string(title = "Type ➞",
+      defval='Wicks',
+      options=['Wicks', 'Body'],
+      group = CORE,
+      tooltip = "Calculation Price : Wicks or Body of the candle")
+       == 'Wicks'
+float Tar             = input.float(2,"Target ",step = 0.1 , tooltip = "Target Multiplyer 止盈止损用的 Adj * 此值, ADJ 是用atr计算出来的",group = CORE) * 10
+
+float long_num             = input.float(1,"限价开多单系数 ",step = 0.001 , tooltip = "限价开多单，收盘价 * 此值 = 开单价",group = CORE)
+float sell_num             = input.float(1,"限价开空单系数 ",step = 0.001 , tooltip = "限价开空单，收盘价 * 此值 = 开单价",group = CORE)
+string Linestyle      = input.string('Dashed',
+     'Line Style', ['Solid', 'Dashed', 'Dotted'], group=CORE,inline= "Line")
+
+color Bull = input.color(GREEN,"",group=CORE,inline= "Line")
+color Bear = input.color(RED,"",group=CORE,inline= "Line")    
+
+
+emanum = input.int(200, 'EMA Length')
+myema = ta.ema(close, emanum)
+
+trendOn = input.bool(false , '是否开启趋势线')
+plot(trendOn ? myema : na, color = color.white)
+
+StyleSwitch = switch Linestyle
+    'Dashed' => line.style_dashed ,
+    'Dotted' => line.style_dotted ,
+    => line.style_solid 
+
+
+
+method volAdj(int len)=>
+    math.min(ta.atr(len) * 0.3, close * (0.3/100)) [20] /2
+
+Adj = volAdj(30)
+plot(Adj)
+VolCal(Index,Sync) =>
+    Bars = math.abs(Index - Sync)
+    for i = 0 to Bars -1
+        Volume.SCR.push(close[i])
+
+    for i = 0 to Volume.SCR.size() -1
+
+        if Volume.SCR.get(i) > open[i]
+            Volume.Green.push(volume[i])
+
+        if Volume.SCR.get(i) < open[i]
+            Volume.Red.push(volume[i])
+
+        Volume.Total.push(volume[i])
+
+    GreenRatio = math.round(Volume.Green.sum() / Volume.Total.sum()* 100,2)
+    RedRatio = math.round(Volume.Red.sum() / Volume.Total.sum()* 100,2)
+    Out = GreenRatio > 55 ? "🟢" : RedRatio > 55 ? "🔴" : "🟡" 
+    Out
+
+
+
+PH = ta.pivothigh(high, period, period)
+PL = ta.pivotlow(low, period, period)
+ScrHigh = CandleType ? high : close 
+ScrLow = CandleType ? low : close
+
+if ta.change(fixnan(PH)) != 0
+    UpdatedHigh := PH
+    phActive    := true
+    HighIndex   := Sync - period
+
+if ta.change(fixnan(PL)) != 0
+    UpdatedLow  := PL
+    plActive    := true
+    LowIndex    := Sync - period
+
+// LONG
+if ScrHigh > UpdatedHigh and phActive
+    
+    BUY := true
+    phActive := false
+
+//Sell
+if ScrLow < UpdatedLow and plActive
+    
+    SELL := true
+    plActive := false
+
+// lets Draw
+
+if BUY and not TradeisON
+    sign = VolCal(HighIndex,Sync)
+    line.new(HighIndex,
+         UpdatedHigh,
+         Sync,
+         UpdatedHigh,
+         color=Bull,
+         style=StyleSwitch,
+         width=2)
+    label.new(math.floor(Sync - (Sync - HighIndex) / 2),
+         UpdatedHigh,
+         not HBreak ? 'CHoCH\n' + sign  : 'BOS\n' + sign,
+         color=OFF,
+         textcolor=color.white,
+         size=size.tiny)
+    label.new(Sync,
+         low,
+         "",
+         yloc = yloc.belowbar,
+         color = color.lime,
+         size = size.small,
+         style = label.style_label_up)
+    HBreak := true
+
+
+if SELL and not TradeisON
+    sign = VolCal(LowIndex,Sync)
+    line.new(LowIndex,
+         UpdatedLow,
+         Sync,
+         UpdatedLow,
+         color=Bear,
+         style=StyleSwitch,
+         width=2)
+    label.new(math.floor(Sync - (Sync - LowIndex) / 2),
+         UpdatedLow,
+         HBreak ? 'CHoCH\n' + sign  : 'BOS\n' + sign,
+         color=OFF,
+         textcolor=color.white,
+         style=label.style_label_up,
+         size=size.tiny)
+    label.new(Sync,
+         low,
+         "",
+         yloc = yloc.abovebar,
+         color =RED,
+         size = size.small,
+         style = label.style_label_down)
+    HBreak := false
+
+
+Long = BUY and not TradeisON     
+Short = SELL and not TradeisON
+TradeFire = Long or Short
+
+if Long and not TradeisON
+    LongTrade:= true
+    ShortTrade:= false
+    if trendOn
+        if close > myema
+            strategy.entry('long',strategy.long, limit = close * long_num)
+    else
+        strategy.entry('long',strategy.long, limit = close * long_num)
+
+if Short and not TradeisON
+    LongTrade:= false
+    ShortTrade:= true
+    if trendOn
+        if close < myema
+            strategy.entry('short',strategy.short, limit = close * sell_num)
+    else
+        strategy.entry('short',strategy.short, limit = close * sell_num)
+
+if true 
+    if TradeFire and not TradeisON
+        TP := switch
+            Long  => (high + (Adj * Tar))
+            Short => (low - (Adj * Tar))
+
+        SL := switch
+            Long  => low - (Adj * Tar)
+            Short => high + (Adj * Tar)
+        strategy.exit("平仓", "long",profit=TP,stop = SL, comment_profit ="止盈", comment_loss ="止损")
+        strategy.exit("平仓", "short",profit=TP,stop = SL, comment_profit ="止盈", comment_loss ="止损")
+        TradeisON:= true
+
+    if TradeisON
+        line.set_x2(tpLine,bar_index)
+        label.set_x(LAB,bar_index+1)
+
+    if LongTrade and TradeisON
+        if high >= TP
+            label.set_color(LAB,GREEN)
+            score.set(0,score.get(0)+1)
+            TradeisON:=false
+
+        if close <= SL
+            score.set(1,score.get(1)+1)
+            label.set_color(LAB,color.new(RED,70))
+            label.set_tooltip(LAB,"Stoploss Hit : "+ str.tostring(math.round_to_mintick(SL)))
+            TradeisON:=false
+
+
+    else if ShortTrade and TradeisON
+        if low <= TP 
+            label.set_color(LAB,GREEN)
+            score.set(0,score.get(0)+1)
+            TradeisON:=false
+            
+        if close >= SL 
+            score.set(1,score.get(1)+1)
+            label.set_color(LAB,color.new(RED,70))
+            label.set_tooltip(LAB,"Stoploss Hit : "+ str.tostring(math.round_to_mintick(SL)))
+            TradeisON:=false
+
+BearCon = TradeisON and ShortTrade
+BullCon = TradeisON and LongTrade
+
+barcolor(BearCon ? RED : BullCon ? _Green : color.rgb(52, 52, 54) )
+
+plotcandle(open, high, low, close, color = BearCon ? RED : BullCon ? _Green : color.rgb(52, 52, 54),
+     wickcolor = color.rgb(103, 99, 99),bordercolor = BearCon ? RED : BullCon ? _Green : color.rgb(52, 52, 54))
+
+bgcolor(BearCon ? color.rgb(136, 4, 15, 90) : BullCon ? color.rgb(8, 191, 158,90) : na )
+
+// where is my table ?!
+var tb = table.new(position.top_right, 3, 3,
+  bgcolor= color.new(color.gray,80))
+
+
+if barstate.islast
+
+    table.cell(tb, 0, 0, "Winning Trades"
+      , text_color = #a3a3b1)
+    table.cell(tb, 1, 0, str.tostring(score.get(0))
+      , text_color = #08c09b)
+    table.cell(tb, 0, 1, "Losing Trades"
+      , text_color = #a3a3b1)
+    table.cell(tb, 1, 1, str.tostring(score.get(1))
+      , text_color = #cd0202)
+
+
+//-- END --

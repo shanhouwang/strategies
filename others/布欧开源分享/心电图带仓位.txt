@@ -1,0 +1,405 @@
+// © buoudequkuairiji
+//@version=5
+//This Strategy Combined the following indicators and conditioning by me
+//Rolling VWAP , ATR , RSI , EMA , SMA 
+//Subhag    form Subhag Ghosh
+//OB PPDD   Form Super OrderBlock / FVG / BoS Tools by makuchaku & eFe
+strategy("ETH 15m Subhag with ECG v2", "ETH 15m Subhag with ECG v2", overlay=true , initial_capital=1000 ,currency = currency.USD ,commission_value=0.04, pyramiding = 1 )
+// Strategy Setting
+uselong     = input.bool(title="做多?", defval = true , group='════ Setting ════')
+useshort    = input.bool(title="做空?", defval = true , group='════ Setting ════')
+useRSIC     =input.bool(title="用rsi吗?", defval = true , group='════ Condition ════')
+usefilter   =input.bool(title="Subhag是否要遵循趋势？", defval = true , group='════ Condition ════')
+riskPer     = input.int(50, "每单最大亏损", minval = 1, group='════ Setting ════')
+JECG        = input.float(5, "心电图跳动阈值？", step=0.1, group='════ Setting ════')
+JTPpre      = input.float(30, "心电图跳动后止盈多少？", step=5, group='════ Setting ════')
+useSL       = input.bool(title=" 使用最大亏损计算中途止盈止损?", defval = true , inline='Set', group='════ Setting ════')
+positionMartin    = input.bool(title="是否开启仓位马丁?", defval = true, inline="检查前三个订单中是否有盈利超过最大止损值的盈利单，有的话第一单下单数量除以10，第二单除以8，第三单除以5，之后的按正常计算", group='════ Setting ════')
+// usetpcl     = input.color(defval=color.new(color.orange,0), title='Color', inline='Set', group='════ Setting ════')
+rrPer       = input.float(5, "盈亏比", minval = 1, step=0.1, group='════ Setting ════')
+TPper       = input.float(30, "止盈平仓多少？", step=5, group='════ Setting ════')
+// 回测范围
+var string BTR1         = '═══ 回测范围 ═══'
+i_startTime             = input.time(defval = timestamp("01 Jan 2019 00:00 +0000"), title = "Start", inline="timestart", group=BTR1)
+i_endTime               = input.time(defval = timestamp("01 Jan 2025 23:59 +0000"), title = "End", inline="timeend", group=BTR1)
+timeCond                = (time > i_startTime) and (time < i_endTime)
+//////////////////////////////////// function MA //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ma(source, length, type) =>
+    type == "SMA" ? ta.sma(source, length) :
+     type == "EMA" ? ta.ema(source, length) :
+     type == "SMMA (RMA)" ? ta.rma(source, length) :
+     type == "WMA" ? ta.wma(source, length) :
+     type == "VWMA" ? ta.vwma(source, length) :
+     na
+////////////////////////////////  RVWAP //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+import PineCoders/ConditionalAverages/1 as pc
+var string GRP2       = '═══ VWAP Setting ═══'
+var string TT_MINBARS = "保持在移动窗口中的最后值的最小数量，即使这些值超出了时间范围。这样可以避免两个时间柱之间存在较大时间间隔导致时间窗口为空的情况"
+int MS_IN_MIN   = 60 * 1000
+int MS_IN_HOUR  = MS_IN_MIN  * 60
+int MS_IN_DAY   = MS_IN_HOUR * 24
+float srcInput        = input.source(close, "Source", tooltip = "用于计算VWAP的数据来源。默认为最高价、最低价和收盘价的平均值。", group = GRP2)
+int  minBarsInput     = input.int(21, "最小的K线数", group = GRP2, tooltip = TT_MINBARS)
+timeStep() =>
+    // @function    从图表的时间范围确定一个时间周期。
+    // @returns     (int) 一个以毫秒为单位的时间值，适用于当前图表的时间范围。将用于RVWAP计算。
+    int tfInMs = timeframe.in_seconds() * 1000
+    float step =
+      switch
+        tfInMs <= MS_IN_MIN        => MS_IN_HOUR
+        tfInMs <= MS_IN_MIN * 5    => MS_IN_HOUR * 4
+        tfInMs <= MS_IN_HOUR       => MS_IN_DAY * 1
+        tfInMs <= MS_IN_HOUR * 4   => MS_IN_DAY * 3
+        tfInMs <= MS_IN_HOUR * 12  => MS_IN_DAY * 7
+        tfInMs <= MS_IN_DAY        => MS_IN_DAY * 30.4375
+        tfInMs <= MS_IN_DAY * 7    => MS_IN_DAY * 90
+        => MS_IN_DAY * 365
+    int result = int(step)
+// RVWAP
+float rollingVWAP = pc.totalForTimeWhen(srcInput * volume, timeStep(), true, minBarsInput) / pc.totalForTimeWhen(volume, timeStep(), true, minBarsInput)
+/////////////////////////  ATR  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+Periods = input.int(title="ATR 周期", defval=12 ,group='══ ATR设置 ══')
+Multiplier = input.float(title="ATR 倍增参数", step=0.1, defval=2.4,group='══ ATR设置 ══')
+[supertrend, direction] = ta.supertrend(Multiplier, Periods)
+/////////////////////////  RSI均线穿越50触发订单  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+LengthRSI = input.int(25,'RSI', minval=1, group='═══ RSI均线穿越50触发订单 ═══')
+LengthRSIMA = input.int(14,'RSI-MA', minval=1, group='══ RSI均线穿越50触发订单 ══', tooltip = 'RSI均线穿越50触发订单')
+/////////////////////////  MA  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+useMA = input.bool(title="Use VWAP?", defval = true , group='═══════════ MA Setting ═══════════', tooltip = 'Use VWAP trend line')
+LengthMA = input.int(21,'EMA', minval=1, group='═══════════ MA Setting ═══════════', tooltip = 'Act as Trend line')
+sma2cl          = input.color(defval=color.new(color.yellow,0), title='EMA Slow', group='═══════════ MA Setting ═══════════' ,inline = 'sma200')
+LengthMA2 = input.int(200,'SMA', minval=1, group='═══════════ MA Setting ═══════════' ,inline = 'sma200')
+float MA_1 = ta.ema(close, LengthMA)
+MA_2 = ta.sma(close, LengthMA2)
+SourceOpen = (open + close[1]) / 2
+Candleopen = ta.ema(SourceOpen,25)
+Bodycolor = Candleopen > Candleopen[1] ? color.green : color.red
+////////////////////////// Subhag form Subhag Ghosh //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+length = input.int(100, minval=1, group='═══════════ Subhag Setting ═══════════')
+smoothing = input.int(17, minval=1, group='═══════════ Subhag Setting ═══════════')
+// Regression Lines
+linreg                  = ta.ema(ta.linreg(close, length, 0),smoothing)
+//COLOR of Regression Line
+hullColor = linreg > linreg[3] ? color.green :linreg < linreg[3] ? color.red : color.yellow
+///////////////////////////////  define trend  /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+trendL      = useMA and ta.cum(nz(volume)) != 0 ? rollingVWAP : MA_1
+upTrend     = direction < 0 ? supertrend : linreg[3]
+downTrend   = direction < 0 ? linreg : supertrend
+fastl       = ta.ema(close,2)
+greenzone   = (fastl > trendL) and (direction < 0)  and (close > linreg) and (Bodycolor == color.green)
+redzone     = (fastl < trendL) and (direction > 0 )  and (close < linreg) and (Bodycolor == color.red)
+greenzoneB   = (fastl > trendL) and (direction < 0)  and (hullColor == color.green) and (Bodycolor == color.green)
+redzoneB     = (fastl < trendL) and (direction > 0 )  and (hullColor == color.red) and (Bodycolor == color.red)
+
+
+//绘制均线和蜡烛图
+zonecl      = greenzone ? color.green : redzone ? color.red : color.yellow
+// main1       = plot(trendL , title="EMA Fast" , color=zonecl , linewidth=1)
+// main2       = plot(MA_2 , title="EMA Slow" , color=sma2cl , linewidth=2)
+//-------------------------------NSDT HAMA 蜡烛图
+// plotbar(linreg[3], upTrend, downTrend, linreg, color=color.new(hullColor,60), title='Configure Bars') 
+//////////////////////////////////  OB PPDD 来自 Super OrderBlock / FVG / BoS 工具，作者为 makuchaku 和 eFe  //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+plotPVT                 = input.bool(defval=true, title='绘制枢轴点', group='═══ 枢轴 ═══')
+pivotLookup             = input.int(defval=4, minval=1, maxval=8,title='Pivot Lookup', group='═══枢轴═══')
+pivotsizing             = input.int(defval=50, minval=1, maxval=100,title='向后区间以调整尺寸', group='═══枢轴═══')
+plotInThePast           = input(false, "Plot When Pivot is Detected" ,group='═══枢轴═══')
+pvtTopColor             = input.color(defval=color.new(color.lime,10), title='Pivot Top Color', group='═══枢轴═══', inline='PVT Top Color')
+pvtBottomColor          = input.color(defval=color.new(color.red,10), title='Pivot Bottom Color', group='═══枢轴═══', inline='PVT Top Color')
+
+plotRJB                 = input.bool(defval=true, title='Plot RJB', group='═══════════ Rejection Blocks ═══════════', inline='RJB sets')
+bosBoxFlag              = input.bool(title='Box Length Manually', defval=false, group='═══════════ Rejection Blocks ═══════════', tooltip='If activated the BoS Boxes will not extend unitl crossed by price. Instead will extend by the amount of bars choosen in the "Set BoS Box Length Manually" option')
+bosBoxLength            = input.int(title='Box Length Manually', defval=3, minval=1, maxval=5, group='═══════════ Rejection Blocks ═══════════', tooltip='If "Set BoS Box Length Manually" is marked, choose by how many bars. Minimum = 1, Maximum = 5')
+rjbBullColor            = input.color(defval=color.new(color.green,70), title='Bullish RJB Color', inline='Set Custom Color', group='═══════════ Rejection Blocks ═══════════')
+rjbBearColor            = input.color(defval=color.new(color.red, 70), title='Bearish RJB Color', inline='Set Custom Color', group='═══════════ Rejection Blocks ═══════════')
+rjbBoxBorder            = input.string(defval=line.style_solid, title='RJB Box Border Style', options=[line.style_dashed, line.style_dotted, line.style_solid], group='═══════════ Rejection Blocks ═══════════', tooltip='To disable border, set Border Width below to 0')
+rjbBorderTransparency   = input.int(defval=100, title='RJB Border Box Transparency', minval=0, maxval=100, group='═══════════ Rejection Blocks ═══════════')
+rjbMaxBoxSet            = input.int(defval=100, title='Maximum RJB Box Displayed', minval=1, maxval=100, group='═══════════ Rejection Blocks ═══════════', tooltip='Minimum = 1, Maximum = 100')
+filterMitRJB            = input.bool(defval=true, title='Custom Color Mitigated RJB', group='═══════════ Rejection Blocks ═══════════')
+mitRJBColor             = input.color(defval=color.new(color.gray, 90), title='Mitigated RJB Color', group='═══════════ Rejection Blocks ═══════════', inline='Set Custom Color Mit RJB', tooltip='Set to 100 to make mitigated RJB disappear')
+
+plotHVB                 = input.bool(defval=true, title='Plot HVB', group='═══════════ 成交量最大的一根K线 ═══════════', tooltip='成交量最大的一根K线.')
+hvbBullColor            = input.color(defval=color.new(color.green,0), title='Bullish HVB Color', inline='Set Custom Color', group='═══════════ 成交量最大的一根K线 ═══════════')
+hvbBearColor            = input.color(defval=color.new(color.orange,0), title='Bearish HVB Color', inline='Set Custom Color', group='═══════════ 成交量最大的一根K线 ═══════════')
+hvbEMAPeriod            = input.int(defval=6, minval=1, title='Volume EMA Period', group='═══════════ 成交量最大的一根K线 ═══════════')
+hvbMultiplier           = input.float(defval=1.2, title='Volume Multiplier', minval=1, maxval=100, group='═══════════ 成交量最大的一根K线 ═══════════')
+
+plotPPDD                = input.bool(defval=true, title="Plot PPDD OB's", group='═══════════ Qualitative indicators ═══════════', tooltip='Premium Premium Discount Discount (PPDD) is an OB formed after liquidity sweep. It will show up by default as a circle (Bull green / Bear red). Also PPDD1 (by deafult maked with a x-cross ⨯) which is a weak OB formed after liquidity sweep, that fails to completely engulf the high/low, but closes beyond the trapped candles open price.')
+ppddBullColor           = input.color(defval=color.new(color.green,0), title="Bullish PPDD OB's Color", group='═══════════ Qualitative indicators ═══════════', inline='PPDD Bull')
+ppddBearColor           = input.color(defval=color.new(color.red,0), title="Bearish PPDD OB's Color", group='═══════════ Qualitative indicators ═══════════', inline='PPDD Bear')
+//labels
+plotLabelRJB            = input.bool(defval=false, title='Plot RJB Label', inline='RJB label', group='═══════════ Label Options ═══════════')
+rjbLabelColor           = input.color(defval=color.gray, title='Color', inline='RJB label', group='═══════════ Label Options ═══════════')
+rjbLabelSize            = input.string(defval=size.tiny, title="Size", options=[size.huge, size.large, size.small, size.tiny, size.auto, size.normal], inline='RJB label', group='═══════════ Label Options ═══════════')
+//Box Types
+var int _rjb = 3
+var int _bos = 4
+//Box Labels
+var string _rjbLabel = "RJB"
+var string _plus     = "+"
+var string _minus    = "-"
+var string _empty    = ""
+//Box Arrays
+var box[] _bearBoxesRJB = array.new_box()
+var box[] _bullBoxesRJB = array.new_box()
+//Functions
+isUp(index) =>
+    close[index] > open[index]
+
+isDown(index) =>
+    close[index] < open[index]
+
+isObUp(index) =>
+    isDown(index + 1) and isUp(index) and close[index] > high[index + 1]
+
+isObDown(index) =>
+    isUp(index + 1) and isDown(index) and close[index] < low[index + 1]
+
+isFvgUp(index) =>
+    (low[index] > high[index + 2])
+
+isFvgDown(index) =>
+    (high[index] < low[index + 2])
+//Function to Calculte Box Length
+_controlBox(_boxes, _high, _low, _type) =>
+    if array.size(_boxes) > 0
+        for i = array.size(_boxes) - 1 to 0 by 1
+            _box = array.get(_boxes, i)
+            _boxLow = box.get_bottom(_box)
+            _boxHigh = box.get_top(_box)
+            _boxRight = box.get_right(_box)
+            if bosBoxFlag and _type == _bos
+                if na or (bar_index + bosBoxLength - 1 == _boxRight and not((_high > _boxLow and _low < _boxLow) or (_high > _boxHigh and _low < _boxHigh)))
+                    box.set_right(_box, bar_index + bosBoxLength - 1)
+            else if (filterMitRJB and _type == _rjb)
+                if na or (bar_index == _boxRight and not((_high > _boxLow and _low < _boxLow) or (_high > _boxHigh and _low < _boxHigh)))
+                    box.set_right(_box, bar_index + 1)
+                else
+                    if _type == _rjb
+                        box.set_bgcolor(_box, mitRJBColor)
+                        box.set_border_color(_box, mitRJBColor)
+            else
+                if na or (bar_index == _boxRight and not((_high > _boxLow and _low < _boxLow) or (_high > _boxHigh and _low < _boxHigh)))
+                    box.set_right(_box, bar_index + 1)
+//////////////////// Rejection Block //////////////////
+if plotRJB
+    isDownRjbObCondition    = isObDown(1)
+    isDownRjb1              = isDownRjbObCondition and  (high[1] < (close[2] + 0.2*(high[2]-close[2]))) // RJB is on trapped's wick and <50% of the wick was covered by signal
+    isDownRjb2              = isDownRjbObCondition and (high[1] > high[2]) // RJB is on signal's wick
+    if isDownRjb1 and plotRJB
+        _bearboxRJB         = box.new(left=bar_index-2, top=high[2], right=bar_index, bottom=close[2], bgcolor=rjbBearColor, border_color=color.new(rjbBearColor, rjbBorderTransparency), border_style=rjbBoxBorder, border_width=1,
+         text   = plotLabelRJB ? _rjbLabel  + _minus : _empty, text_halign=text.align_right, text_valign=text.align_bottom, text_size=rjbLabelSize, text_color=rjbLabelColor)
+        if array.size(_bearBoxesRJB) > rjbMaxBoxSet
+            box.delete(array.shift(_bearBoxesRJB))
+        array.push(_bearBoxesRJB, _bearboxRJB)
+        
+    if isDownRjb2 and plotRJB
+        _bearboxRJB         = box.new(left=bar_index-1, top=high[1], right=bar_index, bottom=open[1], bgcolor=rjbBearColor, border_color=color.new(rjbBearColor, rjbBorderTransparency), border_style=rjbBoxBorder, border_width=1,
+         text=plotLabelRJB ? _rjbLabel  + _minus : _empty, text_halign=text.align_right, text_valign=text.align_bottom, text_size=rjbLabelSize, text_color=rjbLabelColor)
+        if array.size(_bearBoxesRJB) > rjbMaxBoxSet
+            box.delete(array.shift(_bearBoxesRJB))
+        array.push(_bearBoxesRJB, _bearboxRJB)
+//Bullish RJB Box Plotting
+if plotRJB
+    isUpRjbObCondition      = isObUp(1)
+    isUpRjb1                = isUpRjbObCondition and (low[1] > (close[2] - 0.2*(close[2]-low[2]))) // RJB is on trapped's wick and <50% of the wick was covered by signal
+    isUpRjb2                = isUpRjbObCondition and (low[1] < low[2]) // RJB is on signal's wick
+    if isUpRjb1 and plotRJB
+        _bullboxRJB         = box.new(left=bar_index-2, top=close[2], right=bar_index, bottom=low[2], bgcolor=rjbBullColor, border_color=color.new(rjbBullColor, rjbBorderTransparency), border_style=rjbBoxBorder, border_width=1,
+         text  = plotLabelRJB ? _rjbLabel  + _plus : _empty, text_halign=text.align_right, text_valign=text.align_bottom, text_size=rjbLabelSize, text_color=rjbLabelColor)
+        if array.size(_bullBoxesRJB) > rjbMaxBoxSet
+            box.delete(array.shift(_bullBoxesRJB))
+        array.push(_bullBoxesRJB, _bullboxRJB)
+    
+    if isUpRjb2 and plotRJB
+        _bullboxRJB = box.new(left=bar_index-1, top=open[1], right=bar_index, bottom=low[1], bgcolor=rjbBullColor, border_color=color.new(rjbBullColor, rjbBorderTransparency), border_style=rjbBoxBorder, border_width=1, 
+         text=plotLabelRJB ? _rjbLabel  + _plus : _empty, text_halign=text.align_right, text_valign=text.align_bottom, text_size=rjbLabelSize, text_color=rjbLabelColor)
+        if array.size(_bullBoxesRJB) > rjbMaxBoxSet
+            box.delete(array.shift(_bullBoxesRJB))
+        array.push(_bullBoxesRJB, _bullboxRJB)
+
+if plotRJB
+    _controlBox(_bearBoxesRJB, high, low, _rjb)
+    _controlBox(_bullBoxesRJB, high, low, _rjb)
+//////////////////// Pivots //////////////////// 
+hih     = ta.pivothigh(high, pivotLookup, pivotLookup)
+lol     = ta.pivotlow(low , pivotLookup, pivotLookup)
+top     = ta.valuewhen(hih, high[pivotLookup], 0)
+bottom  = ta.valuewhen(lol, low [pivotLookup], 0)
+pvtop = plot(top, offset=plotInThePast ? 0 : -pivotLookup , linewidth=1, color=(top != top[1] ? na : (plotPVT ? pvtTopColor : na)), title="Pivot Top")
+pvdow = plot(bottom, offset=plotInThePast ? 0 : -pivotLookup, linewidth=1, color=(bottom != bottom[1] ? na : (plotPVT ? pvtBottomColor : na)), title="Pivot Bottom")
+//////////////////// Premium Premium & Discount Discount //////////////////
+premiumPremium      = plotPPDD and isObDown(0) and ((math.max(high, high[1]) > top and close < top) or (math.max(high, high[1]) > top[1] and close < top[1]))
+discountDiscount    = plotPPDD and isObUp(0) and ((math.min(low, low[1]) < bottom and close > bottom) or (math.min(low, low[1]) < bottom[1] and close > bottom[1]))
+plotshape(premiumPremium, "Bearish PPDD OB", style=shape.circle , location=location.abovebar, color=ppddBearColor, size=size.tiny)
+plotshape(discountDiscount, "Bullish PPDD OB", style=shape.circle , location=location.belowbar, color=ppddBullColor, size=size.tiny)
+
+premiumPremium1     = plotPPDD and (isUp(1) and isDown(0) and close[0] < open[1]) and ((math.max(high, high[1]) > top and close < top) or (math.max(high, high[1]) > top[1] and close < top[1])) and not premiumPremium
+discountDiscount1   = plotPPDD and (isDown(1) and isUp(0) and close[0] > open[1]) and ((math.min(low, low[1]) < bottom and close > bottom) or (math.min(low, low[1]) < bottom[1] and close > bottom[1])) and not discountDiscount
+plotshape(premiumPremium1, "Bearish PPDD Weak OB", style=shape.xcross, location=location.abovebar, color=ppddBearColor, size=size.tiny)
+plotshape(discountDiscount1, "Bullish PPDD Weak OB", style=shape.xcross, location=location.belowbar, color=ppddBullColor, size=size.tiny)
+////////////////// 成交量最大的一根K线s //////////////////
+// volEma          = ta.sma(volume, hvbEMAPeriod)
+// isHighVolume    = volume > (hvbMultiplier * volEma)
+// barcolor(plotHVB and isUp(0) and isHighVolume ? hvbBullColor : na, title="Bullish HVB")
+// barcolor(plotHVB and isDown(0) and isHighVolume ? hvbBearColor : na, title="Bearish HVB")
+//////////////////////////////////   Strategy condition   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+openoncel       = strategy.opentrades == 0 or (strategy.opentrades.entry_id(0) == 'Short2')
+openonces       = strategy.opentrades == 0 or (strategy.opentrades.entry_id(0) == 'long2')
+exitshort       =  (fastl > trendL)     and (direction < 0) and (close > top) and (close > linreg)
+exitlong        =  (fastl < trendL)     and (direction > 0) and (close < bottom) and (close < linreg)
+//sizing
+highest                     = ta.highest(top,pivotsizing)
+lowest                      = ta.lowest(bottom,pivotsizing)   //区间最低价 pivotsizing是区间k线数量
+
+lotsbull                    = math.abs((riskPer ) / (close - lowest)) //下单量 = 风险（收盘价 - 区间日内最低价） 
+
+// plot(bottom,title='bottom')
+lotsbear                    = math.abs((riskPer ) / (highest - close))
+////配置 RSI
+rsibb           = ta.rsi(close,LengthRSI)
+rsiMA           = ma(rsibb, LengthRSIMA, "SMA")
+rsibuy1         = ta.crossover(rsiMA,50)    and  (rsibb > rsiMA)  and useRSIC and (close > top) and greenzone and timeCond
+rsibuy2         = ta.crossover(rsiMA,50)    and  (rsibb > rsiMA)  and useRSIC and (close > top) and greenzoneB and timeCond
+rsisell1        = ta.crossunder(rsiMA,50)   and  (rsibb < rsiMA)  and useRSIC and (close < bottom) and redzone and timeCond
+rsisell2        = ta.crossunder(rsiMA,50)   and  (rsibb < rsiMA)  and useRSIC and (close < bottom) and redzoneB and timeCond
+//配置tv的supertrend
+LongCondition   =   (close > supertrend)   and openoncel  and (close > top) and greenzone  and timeCond
+ShortCondition  =   ( close < supertrend)  and openonces  and (close < bottom)    and redzone  and timeCond
+LongConditionB   =   (close > supertrend)   and openoncel  and (close > top) and greenzoneB  and timeCond
+ShortConditionB  =   ( close < supertrend)  and openonces  and (close < bottom)    and redzoneB  and timeCond
+position_size           = strategy.position_size
+actionbull              = usefilter == true ? (rsibuy2 or LongConditionB) : (rsibuy1 or LongCondition)
+actionbear              = usefilter == true ? (rsisell2 or ShortConditionB) : (ShortCondition or rsisell1)
+changetbull                 = ta.change(actionbull) ,changetbear             = ta.change(actionbear) ,buyprice                = 0.0 ,sellprice               = 0.0 ,mapast                  = 0.0 ,slprice                 = 0.0 ,openprice               = strategy.opentrades.entry_price(0),sl_percent_bear   = 0.0,sl_percent_bull   = 0.0 , onetrade = 0
+buyprice                    := position_size >= 0 ? changetbull ? openprice : buyprice[1] : na
+sellprice                   := position_size <= 0 ? changetbear ? openprice : sellprice[1] : na
+mapast                      := changetbull ? MA_2 : changetbear ? MA_2 : mapast[1] 
+onetrade                    := TPper == 100 ? (changetbull ? 1 : changetbear ? -1 :  onetrade[1]) : 0
+slprice                     := changetbull ? lowest : changetbear ? highest : slprice[1]
+sl_percent_bull             := changetbull ? (buyprice - lowest)/buyprice : (position_size > 0) ? sl_percent_bull[1] :(position_size < 0)  ? 0.0 : 0.0 
+takeProfitBull              = buyprice * (1 + (sl_percent_bull*rrPer))
+sl_percent_bear             := changetbear ? (highest - sellprice) / sellprice : (position_size < 0) ? sl_percent_bear[1] :(position_size > 0)  ? 0.0 : 0.0 
+takeProfitBear              = sellprice * (1 - (sl_percent_bear*rrPer))
+//画出止盈止损位
+// plot(useSL and changetbull ? takeProfitBull : useSL and changetbear ? takeProfitBear : na , 'TP',usetpcl,style=plot.style_linebr , linewidth=1 )
+// plot(useSL and changetbull ? slprice : useSL and changetbear ? slprice : na , 'SL',usetpcl,style=plot.style_linebr , linewidth=1 )
+string Alert_OpenLong       ='Long Entry! on '+syminfo.ticker+'\n Buy@'+str.tostring(close)+'\n Size = '+str.tostring(lotsbull)+'\n SL = '+str.tostring(slprice)
+string Alert_OpenShort      ='Short Entry! on '+syminfo.ticker+'\n Sell@'+str.tostring(close)+'\n Size = '+str.tostring(lotsbear)+'\n SL = '+str.tostring(slprice)
+string Alert_LongTP         ='TP Long on '+syminfo.ticker+' @'+str.tostring(takeProfitBull)+' Size = '+str.tostring((position_size * (TPper/100)))
+string Alert_ShortTP        ='TP Short on '+syminfo.ticker+' @'+str.tostring(takeProfitBear)+' Size = '+str.tostring((position_size * (TPper/100)))
+var message_closelong       = 'Tailing Stop Long!!!'
+var message_closeshort      = 'Tailing Stop Short!!!'
+string Alert_StopLosslong   ='StopLoss Long! on '+syminfo.ticker+' @'+str.tostring(slprice)
+string Alert_StopLossshort  = 'StopLoss Short! on '+syminfo.ticker+' @'+str.tostring(slprice)
+
+//重新计算 防止开仓太多
+strategy.risk.max_position_size(riskPer/10)
+
+
+// v3策略参数
+n1 = 10
+n2 = 35 * n1
+median = ta.sma(close, n2)
+std = ta.stdev(close, n2)
+z_score = math.abs(close - median) / std
+m = ta.sma(z_score, n2)
+upper = median + std * m
+lower = median - std * m
+condition_long = close > upper
+condition_short = close < lower
+mtm = close / close[n1] - 1
+mtm_mean = ta.sma(mtm, n1)
+
+// 基于价格atr，计算波动率因子wd_atr
+c1 = high - low
+c2 = math.abs(high - close[1])
+c3 = math.abs(low - close[1])
+atr_array = array.from(c1,c2,c3)
+tr_ = array.max(atr_array,0)
+atr = ta.sma(tr_, n1)
+avg_price = ta.sma(close, n1)
+wd_atr = atr / avg_price
+
+// 参考ATR，对MTM指标，计算波动率因子
+mtm_l = low / low[n1] - 1
+mtm_h = high / high[n1] - 1
+mtm_c = close / close[n1] - 1
+mtm_c1 = mtm_h - mtm_l
+mtm_c2 = math.abs(mtm_h - mtm_c[1])
+mtm_c3 = math.abs(mtm_l - mtm_c[1])
+mtm_tr = array.max(array.from(mtm_c1, mtm_c2, mtm_c3))
+mtm_atr = ta.sma(mtm_tr, n1)
+
+// 参考ATR，对MTM mean指标，计算波动率因子
+mtm_l_mean = ta.sma(mtm_l, n1)
+mtm_h_mean = ta.sma(mtm_h, n1)
+mtm_c_mean = ta.sma(mtm_c, n1)
+mtm_c1_mean = mtm_h_mean - mtm_l_mean
+mtm_c2_mean = math.abs(mtm_h_mean - mtm_c_mean[1])
+mtm_c3_mean = math.abs(mtm_l_mean - mtm_c_mean[1])
+mtm_tr_mean = array.max(array.from(mtm_c1_mean, mtm_c2_mean, mtm_c3_mean))
+mtm_atr_mean = ta.sma(mtm_tr_mean, n1)
+
+// mtm_mean指标分别乘以三个波动率因子
+indicator = mtm_mean * mtm_atr * mtm_atr_mean * wd_atr
+// 数值太小，直接两根前后K线计算波动
+j_indicator = indicator/indicator[1]
+//取前面5根K线的值，取最小的
+L_secondLowest = array.min(array.from(indicator/indicator[1], indicator[1]/indicator[2], indicator[2]/indicator[3], indicator[3]/indicator[4], indicator[4]/indicator[5]))
+
+
+//获取指定交易对的价格
+btc = request.security('BINANCE:BTCUSDT', timeframe.period , close)
+eth = request.security('BINANCE:ETHUSDT', timeframe.period , close)
+ndx = request.security('NASDAQ:NDX', timeframe.period , close)
+
+//检查前三个订单中是否有盈利超过最大止损值的盈利单
+profitRiskPer = 0
+for i = 0 to 2
+    tradePnL = strategy.closedtrades.profit(strategy.closedtrades - 1 -i)
+    if(tradePnL > riskPer)
+        profitRiskPer := profitRiskPer + i + 1
+if(positionMartin)
+    if (profitRiskPer == 1)
+        lotsbull := lotsbull / 10
+    else if(profitRiskPer == 2)
+        lotsbull := lotsbull / 8
+    else if(profitRiskPer == 3)
+        lotsbull := lotsbull / 5
+//给个变量方便心电图止盈只运行一次
+var bool tpDone = false
+
+// exit order
+if (exitlong == true )
+    strategy.close('long2', comment='TailingStop-L', alert_message=message_closelong)
+if (exitshort == true )
+    strategy.close('Short2', comment='TailingStop-S', alert_message=message_closeshort)
+//long 单
+if (uselong == true)  and changetbull and (onetrade[1] != 1) and (L_secondLowest < 1)
+    strategy.entry('long2', strategy.long   ,qty =lotsbull , comment='Long', alert_message=Alert_OpenLong)    
+// Short
+if (useshort == true) and changetbear and (onetrade[1] != -1)
+    strategy.entry('Short2', strategy.short   ,qty =lotsbear, comment='Short', alert_message=Alert_OpenShort)
+//TPSL
+if (position_size > 0) and useSL and (low < buyprice)
+    strategy.exit('TPSLB','long2', comment='SL', stop =slprice  , alert_message=Alert_StopLosslong)
+//心电图跳动大于5 就止盈一半
+else if (j_indicator > JECG and position_size > 0 and useSL and not tpDone)    
+    strategy.close('long2', comment='J-TP', qty_percent=JTPpre)
+    tpDone := true
+else if (position_size > 0) and useSL and (low > buyprice)
+    strategy.exit('TPSLB','long2', comment='TP',limit=takeProfitBull , alert_message=Alert_LongTP , qty_percent=TPper)
+else
+    strategy.cancel('TPSLB')
+if (position_size < 0) and useSL and  (high > sellprice)
+    strategy.exit('TPSLS','Short2',comment= 'SL', stop=slprice , alert_message=Alert_StopLossshort)
+else if (position_size < 0) and useSL and  (high < sellprice)
+    strategy.exit('TPSLS','Short2',comment= 'TP',limit=takeProfitBear  , alert_message=Alert_ShortTP, qty_percent=TPper)
+else
+    strategy.cancel('TPSLS')
+
+// 当仓位为0的时候，重置 tpDone变量
+if (strategy.position_size == 0)
+    tpDone := false
+
+//////////////////////////////////     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

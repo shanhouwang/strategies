@@ -1,0 +1,113 @@
+//@version=5
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// Modified by Juan C for FVBO Strategy, some source code from Trader-Elisa
+strategy(title='BB-Keltner Squeeze with KDJ strategy', overlay=true, initial_capital=1000)
+length = input.int(20, minval=1, title='Length')
+src = input(close, title='Source')
+lowest = input(5, title='How many candles should the stop loss be placed ahead? Lowest price.')
+RRR = input(1.5, title='盈亏比')
+// 2 Standard Deviation Bollinger Bands
+B2mult = input.float(2.0, minval=0.001, maxval=50, title='BB Standard Deviation')
+B2basis = ta.sma(src, length)
+B2dev = B2mult * ta.stdev(src, length)
+B2upper = B2basis + B2dev
+B2lower = B2basis - B2dev
+// plot(B2basis, color=color.new(#9c27b0, 0), style=plot.style_cross, linewidth=2)
+p1 = plot(B2upper, color=color.new(#673ab7, 0), linewidth=2, title='Band 2SD upper', style=plot.style_line)
+p2 = plot(B2lower, color=color.new(#673ab7, 0), linewidth=2, title='Band 2SD lower', style=plot.style_line)
+
+
+// KDJ指标
+ilong = input(25, title='period')
+isig = input(3, title='signal')
+
+bcwsma(s, l, m) =>
+    _s = s
+    _l = l
+    _m = m
+    var float _bcwsma = na
+    _bcwsma := (_m * _s + (_l - _m) * nz(_bcwsma[1])) / _l
+    _bcwsma
+
+c = close
+h = ta.highest(high, ilong)
+l = ta.lowest(low, ilong)
+RSV = 100 * ((c - l) / (h - l))
+pK = bcwsma(RSV, isig, 1)
+pD = bcwsma(pK, isig, 1)
+pJ = 3 * pK - 2 * pD
+
+
+// Keltner channels
+useTrueRange = input(true)
+
+Kmult = input(1.5, title='Keltner Range')
+Kma = ta.ema(src, length)
+Krange = useTrueRange ? ta.tr : high - low
+Krangema = ta.ema(Krange, length)
+Kupper = Kma + Krangema * Kmult
+Klower = Kma - Krangema * Kmult
+
+plot(Kma, title='Keltner Basis', color=color.new(#2196f3, 0), style=plot.style_line, linewidth=1)
+// p5 = plot(Kupper, title='Keltner upper', color=color.new(#2196f3, 0), linewidth=1, style=plot.style_line)
+// p6 = plot(Klower, title='Keltner lower', color=color.new(#2196f3, 0), linewidth=1, style=plot.style_line)
+// fill(p5, p6, color=color.new(#2196f3, 90), title='Keltner Channel Fill')
+
+// Highlight Crossover (Squeeze) //
+
+bb_condition = input.string(defval='Both', title='Bollinger Band Crossover Condition', options=['Both', 'At Least One'])
+
+// 第一个条件 符合挤压条件
+where1 = B2upper <= Kupper and B2lower >= Klower 
+
+//第二个条件 挤压范围内 某一根K线收盘价收在布林通道下线 并且kdj 的J线小于20
+where2 = close < B2lower and pJ < 20 and where1
+
+//第三个条件 在前两个条件满足后，再找出KDJ大于20 且close收涨 就是关键K线
+var w2 = 0 
+if where2
+    w2 := 1 
+// 开仓时的止损和止盈价位，并存储在变量中
+stop_loss = ta.lowest(lowest) //5根K线内最低价
+take_profit = ((close - stop_loss) * RRR) + close //试了下固定盈亏比，效果不好
+var stop_loss_initial = 0.0
+var take_profit_initial = 0.0
+var num = 0
+where3 = (w2 == 1 and pJ > 20 and close > close[1])
+//满足条件开多单
+if where3
+    // 在开仓时存储止损和止盈价位 bar_index
+    stop_loss_initial := stop_loss
+    take_profit_initial := take_profit
+    num := 1
+    strategy.entry('long',strategy.long)
+    w2 := 0
+    // 下单时的止损和止盈不变
+    strategy.exit("止损", "long",stop=stop_loss_initial)
+// 如果kdj 的J线大于80，再跌下80 进行平仓 其实就是死叉
+if(ta.crossunder(pJ,80))
+    strategy.close("long", qty_percent = 100, comment = "KDJ跌破80止盈")
+
+
+cross_over_color = if bb_condition == 'Both'
+    cross_over_color = B2upper <= Kupper and B2lower >= Klower ? color.aqua : na
+    cross_over_color
+else
+    cross_over_color = B2upper <= Kupper or B2lower >= Klower ? color.aqua : na
+    cross_over_color
+
+bgcolor(color=cross_over_color, title='挤压区间', transp=90)
+
+// // 绘制止损和止盈价位
+// plot(stop_loss_initial, "Stop Loss", color.red)
+// plot(take_profit_initial, "Take Profit", color.green)
+// 在每个周期结束时，检查订单状态并更新止损和止盈价位
+if strategy.position_size == 0
+    stop_loss_initial := stop_loss
+    take_profit_initial := take_profit
+    num := 0
+
+// Alert Option (to trigger you need to actually set a Tradingview alert) //
+alert = B2upper <= Kupper and B2lower >= Klower ? true : false
+alertcondition(alert, title='BB-Kelt Squeeze', message='BB Kelt Squeeze')
+

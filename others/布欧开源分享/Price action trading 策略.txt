@@ -1,0 +1,222 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © KivancOzbilgic
+//developer: KivancOzbilgic
+//author: KivancOzbilgic
+//@version=4
+strategy("Price action trading 策略", shorttitle="Price action trading 策略", overlay=true)
+src = input(hl2, title="Source")
+Periods = input(title="ATR Length", type=input.integer, defval=10)
+Multiplier = input(title="ATR Multiplier", type=input.float, step=0.1, defval=3.0)
+mav = input(title="Moving Average Type", defval="EMA", options=["SMA", "EMA", "WMA", "TMA", "VAR", "WWMA", "ZLEMA", "TSF"])
+length =input(10, "Moving Average Length", minval=1)
+changeATR= input(title="Change ATR Calculation Method ?", type=input.bool, defval=true)
+showsupport = input(title="Show Moving Average?", type=input.bool, defval=true)
+showsignalsk = input(title="Show Crossing Signals?", type=input.bool, defval=true)
+showsignalsc = input(title="Show Price/Pmax Crossing Signals?", type=input.bool, defval=false)
+highlighting = input(title="Highlighter On/Off ?", type=input.bool, defval=true)
+
+basisType = input(defval="ZEMA", title="MA Type: ", options=["SMA", "EMA", "DEMA", "TEMA", "WMA", "VWMA", "SMMA", "HullMA", "ZEMA", "SSMA", "TMA"])
+basisLen = input(defval=8, title="MA Period", minval=1)
+useRes = input(defval=true, title="Use Alternate Resolution?")
+intRs_ = input(defval=6, title="Multiplier for Alernate Resolution", minval=1)
+intRes = useRes ? intRs_ : 1
+atr2 = sma(tr, Periods)
+atr= changeATR ? atr(Periods) : atr2
+Var_Func(src,length)=>
+    valpha=2/(length+1)
+    vud1=src>src[1] ? src-src[1] : 0
+    vdd1=src<src[1] ? src[1]-src : 0
+    vUD=sum(vud1,9)
+    vDD=sum(vdd1,9)
+    vCMO=nz((vUD-vDD)/(vUD+vDD))
+    VAR=0.0
+    VAR:=nz(valpha*abs(vCMO)*src)+(1-valpha*abs(vCMO))*nz(VAR[1])
+VAR=Var_Func(src,length)
+Wwma_Func(src,length)=>
+    wwalpha = 1/ length
+    WWMA = 0.0
+    WWMA := wwalpha*src + (1-wwalpha)*nz(WWMA[1])
+WWMA=Wwma_Func(src,length)
+Zlema_Func(src,length)=>
+    zxLag = length/2==round(length/2) ? length/2 : (length - 1) / 2
+    zxEMAData = (src + (src - src[zxLag]))
+    ZLEMA = ema(zxEMAData, length)
+ZLEMA=Zlema_Func(src,length)
+Tsf_Func(src,length)=>
+    lrc = linreg(src, length, 0)
+    lrc1 = linreg(src,length,1)
+    lrs = (lrc-lrc1)
+    TSF = linreg(src, length, 0)+lrs
+TSF=Tsf_Func(src,length)
+getMA(src, length) =>
+    ma = 0.0
+    if mav == "SMA"
+        ma := sma(src, length)
+        ma
+
+    if mav == "EMA"
+        ma := ema(src, length)
+        ma
+
+    if mav == "WMA"
+        ma := wma(src, length)
+        ma
+
+    if mav == "TMA"
+        ma := sma(sma(src, ceil(length / 2)), floor(length / 2) + 1)
+        ma
+
+    if mav == "VAR"
+        ma := VAR
+        ma
+
+    if mav == "WWMA"
+        ma := WWMA
+        ma
+
+    if mav == "ZLEMA"
+        ma := ZLEMA
+        ma
+
+    if mav == "TSF"
+        ma := TSF
+        ma
+    ma
+    
+MAvg=getMA(src, length)
+Pmax_Func(src,length)=>
+    longStop = MAvg - Multiplier*atr
+    longStopPrev = nz(longStop[1], longStop)
+    longStop := MAvg > longStopPrev ? max(longStop, longStopPrev) : longStop
+    shortStop = MAvg + Multiplier*atr
+    shortStopPrev = nz(shortStop[1], shortStop)
+    shortStop := MAvg < shortStopPrev ? min(shortStop, shortStopPrev) : shortStop
+    dir = 1
+    dir := nz(dir[1], dir)
+    dir := dir == -1 and MAvg > shortStopPrev ? 1 : dir == 1 and MAvg < longStopPrev ? -1 : dir
+    PMax = dir==1 ? longStop: shortStop
+PMax=Pmax_Func(src,length)
+plot(showsupport ? MAvg : na, color=#0585E1, linewidth=2, title="Moving Avg Line")
+pALL=plot(PMax, color=color.red, linewidth=2, title="PMax")
+
+
+// 计算连续上涨的条件
+is_up_trend(length) =>
+    up_count = 0
+    for i = 1 to length
+        if close[i] > close[i - 1]
+            up_count := up_count + 1
+    up_count == length
+
+// 计算连续下跌的条件
+is_down_trend(length) =>
+    down_count = 0
+    for i = 1 to length
+        if close[i] < close[i - 1]
+            down_count := down_count + 1
+    down_count == length
+
+variant_supersmoother(src, len) =>
+    a1 = exp(-1.414 * 3.14159 / len)
+    b1 = 2 * a1 * cos(1.414 * 3.14159 / len)
+    c2 = b1
+    c3 = -a1 * a1
+    c1 = 1 - c2 - c3
+    v9 = 0.0
+    v9 := c1 * (src + nz(src[1])) / 2 + c2 * nz(v9[1]) + c3 * nz(v9[2])
+    v9
+
+variant_smoothed(src, len) =>
+    v5 = 0.0
+    sma_1 = sma(src, len)
+    v5 := na(v5[1]) ? sma_1 : (v5[1] * (len - 1) + src) / len
+    v5
+
+variant_zerolagema(src, len) =>
+    lag = (len - 1) / 2
+    emaSrc = src + src - src[lag]
+    v10 = ema(emaSrc, len)
+    v10
+
+variant_doubleema(src, len) =>
+    v2 = ema(src, len)
+    v6 = 2 * v2 - ema(v2, len)
+    v6
+
+variant_tripleema(src, len) =>
+    v2 = ema(src, len)
+    v7 = 3 * (v2 - ema(v2, len)) + ema(ema(v2, len), len)  // Triple Exponential
+    v7
+
+//calc Laguerre
+variant_lag(p, g) =>
+    L0 = 0.0
+    L1 = 0.0
+    L2 = 0.0
+    L3 = 0.0
+    L0 := (1 - g) * p + g * nz(L0[1])
+    L1 := -g * L0 + nz(L0[1]) + g * nz(L1[1])
+    L2 := -g * L1 + nz(L1[1]) + g * nz(L2[1])
+    L3 := -g * L2 + nz(L2[1]) + g * nz(L3[1])
+    f = (L0 + 2 * L1 + 2 * L2 + L3) / 6
+    f
+
+// return variant, defaults to SMA 
+variant(type, src, len) =>
+    ema_1 = ema(src, len)
+    wma_1 = wma(src, len)
+    vwma_1 = vwma(src, len)
+    variant_smoothed__1 = variant_smoothed(src, len)
+    variant_doubleema__1 = variant_doubleema(src, len)
+    variant_tripleema__1 = variant_tripleema(src, len)
+    wma_2 = wma(src, len / 2)
+    wma_3 = wma(src, len)
+    wma_4 = wma(2 * wma_2 - wma_3, round(sqrt(len)))
+    variant_supersmoother__1 = variant_supersmoother(src, len)
+    variant_zerolagema__1 = variant_zerolagema(src, len)
+    sma_1 = sma(src, len)
+    sma_2 = sma(sma_1, len)
+    sma_3 = sma(src, len)
+    type == "EMA" ? ema_1 : type == "WMA" ? wma_1 : 
+       type == "VWMA" ? vwma_1 : type == "SMMA" ? variant_smoothed__1 : 
+       type == "DEMA" ? variant_doubleema__1 : type == "TEMA" ? variant_tripleema__1 : 
+       type == "HullMA" ? wma_4 : type == "SSMA" ? variant_supersmoother__1 : 
+       type == "ZEMA" ? variant_zerolagema__1 : type == "TMA" ? sma_2 : sma_3
+
+// - /variant 
+//收盘价大于 ema200 pmax 蓝线大于红线大于ema200 pmax蓝线大于红线
+ema200 = ema(close,200)
+plot(ema200,color = color.white)
+where1 = close > ema200 and MAvg > PMax and PMax > ema200 and MAvg > PMax
+
+//找到连续上涨或者下跌的三根k线
+where2 = is_up_trend(3) or is_down_trend(3)
+
+closeSeriesAlt = variant(basisType, close, basisLen * intRes)
+openSeriesAlt = variant(basisType, open, basisLen * intRes)
+
+where3 = closeSeriesAlt > openSeriesAlt
+where = where1 and where2 and where3
+var stop_loss_initial = 0.0
+var take_profit_initial = 0.0
+
+
+stop_loss = PMax
+takeProfit = ((close - stop_loss) * 1.5) + close
+if where and strategy.position_size == 0
+    // 在开仓时存储止损和止盈价位 bar_index
+    stop_loss_initial := stop_loss
+    take_profit_initial := takeProfit
+
+    strategy.entry('long',strategy.long)
+    // 下单时的止损和止盈不变
+    strategy.exit("out", "long",limit=take_profit_initial,stop=stop_loss_initial)
+// 绘制止损和止盈价位
+plot(stop_loss_initial, "Stop Loss", color.red)
+plot(take_profit_initial, "Take Profit", color.green)
+// 在每个周期结束时，检查订单状态并更新止损和止盈价位
+
+if strategy.position_size == 0
+    stop_loss_initial := stop_loss
+    take_profit_initial := takeProfit
+

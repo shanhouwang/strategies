@@ -1,0 +1,26 @@
+//@version=5
+indicator("ILLQ流动性溢价因子", overlay = true)
+
+n = input(34, "Period")
+factor_name = "CustomFactor" // 自定义因子名称
+
+route_1 = 2 * (high - low) + (open - close)
+route_2 = 2 * (high - low) + (close - open)
+shortest_path = route_1 > route_2 ? route_2 : route_1
+normalized_shortest = shortest_path / open
+liquidity_premium = volume / normalized_shortest
+
+custom_factor = ta.sma(liquidity_premium, n)
+
+// 归一化函数
+normalize_value(value, min_val, max_val) =>
+    (value - min_val) / (max_val - min_val)
+
+// 计算 custom_factor 的最大值和最小值
+factor_min = ta.min(custom_factor)
+factor_max = ta.max(custom_factor)
+
+// 将 custom_factor 归一化处理
+normalized_custom_factor = normalize_value(custom_factor, factor_min, factor_max)
+
+plot(normalized_custom_factor, title=factor_name, color=color.blue)

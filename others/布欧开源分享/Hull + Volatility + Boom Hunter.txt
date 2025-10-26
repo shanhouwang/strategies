@@ -1,0 +1,253 @@
+//@version=5
+strategy(title='Hull + Volatility + Boom Hunter', overlay=true, initial_capital=1000)
+
+//INPUT
+src = input(close, title='Source')
+modeSwitch = input.string('Hma', title='Hull Variation', options=['Hma', 'Thma', 'Ehma'])
+length = input(200, title='Length(180-200 for floating S/R , 55 for swing entry)')
+lengthMult = input(2,title='Length multiplier (Used to view higher timeframes with straight band)')
+
+useHtf = input(false, title='Show Hull MA from X timeframe? (good for scalping)')
+htf = input.timeframe('240', title='Higher timeframe')
+
+candleCol = input(false, title='Color candles based on Hull\'s Trend?')
+visualSwitch = input(true, title='Show as a Band?')
+thicknesSwitch = input(1, title='Line Thickness')
+
+//FUNCTIONS
+//HMA
+HMA(_src, _length) =>
+    ta.wma(2 * ta.wma(_src, _length / 2) - ta.wma(_src, _length), math.round(math.sqrt(_length)))
+//EHMA    
+EHMA(_src, _length) =>
+    ta.ema(2 * ta.ema(_src, _length / 2) - ta.ema(_src, _length), math.round(math.sqrt(_length)))
+//THMA    
+THMA(_src, _length) =>
+    ta.wma(ta.wma(_src, _length / 3) * 3 - ta.wma(_src, _length / 2) - ta.wma(_src, _length), _length)
+
+//SWITCH
+Mode(modeSwitch, src, len) =>
+    modeSwitch == 'Hma' ? HMA(src, len) : modeSwitch == 'Ehma' ? EHMA(src, len) : modeSwitch == 'Thma' ? THMA(src, len / 2) : na
+
+//OUT
+_hull = Mode(modeSwitch, src, int(length * lengthMult))
+HULL = useHtf ? request.security(syminfo.ticker, htf, _hull) : _hull
+MHULL = HULL[0]
+SHULL = HULL[2]
+
+//COLOR
+hullColor =  HULL > HULL[2] ? #00ff00 : #ff0000
+//PLOT
+///< Frame
+Fi1 = plot(MHULL, title='MHULL', color=hullColor, linewidth=thicknesSwitch)
+
+where1 = HULL > HULL[2] and close > HULL
+
+// ________________________________________________+++++++++++++++++++++++++++++++++++++++++++ where2 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++________________________________________________
+
+LPPeriod = input.int(6, title='Quotient | LPPeriod', inline='quotient', group='EOT 1 (Main Oscillator)')
+K1 = input.int(0, title='K1', inline='quotient', group='EOT 1 (Main Oscillator)')
+K2 = 0.3
+esize = 60  //, title = "Size", inline = "quotient2", group = "EOT 1 (Main Oscillator)")
+ey = 50  //, title = "Y axis", inline = "quotient2", group = "EOT 1 (Main Oscillator)")
+trigno = input.int(2, 'Trigger Length', group='EOT 1 (Main Oscillator)', inline='quotient2')
+osccol = input.color(color.blue, title='Oscillator Color:', group='EOT 1 (Main Oscillator)', inline='q2')
+trigcol = input.color(color.white, title='Trigger Color:', group='EOT 1 (Main Oscillator)', inline='q2')
+
+// EOT 2
+//Inputs
+LPPeriod2 = input.int(27, title='LPPeriod2', group='EOT 2 (Red Wave)', inline='q2')
+K12 = input.float(0.8, title='K1', group='EOT 2 (Red Wave)', inline='q2')
+K22 = input.float(0.3, title='K2', group='EOT 2 (Red Wave)', inline='q2')
+esize3 = 60  //, title = "Size", inline = "quotient2", group = "EOT 2 (Red Wave)")
+ey3 = 50  //, title = "Y axis2", inline = "quotient2", group = "EOT 2 (Red Wave)")
+osccol2 = input.color(color.red, title='Line Color:', inline='quotient22', group='EOT 2 (Red Wave)')
+osccol22 = input.color(color.red, title='Fill Color:', inline='quotient22', group='EOT 2 (Red Wave)')
+// EOT 3
+//Inputs
+LPPeriod3 = input.int(11, title='LPPeriod3', group='EOT 3 (Yellow Line)', inline='q2')
+K13 = input.float(0.99, title='K1', group='EOT 3 (Yellow Line)', inline='q2')
+K33 = K13 * -1
+esize2 = 60  //, title = "Size", inline = "quotient3", group = "EOT 3 (Yellow Line)")
+ey2 = 50  //, title = "Y axis", inline = "quotient3", group = "EOT 3 (Yellow Line)")
+osccol3 = input.color(color.yellow, title='Line Color:', group='EOT 3 (Yellow Line)', inline='quotient3')
+
+// LSMAWT
+n1 = input.int(9, 'WT | master', inline='lsma', group='LSMA Wave Trend Settings')
+n2 = input.int(6, 'time 1', inline='lsma', group='LSMA Wave Trend Settings')
+n3 = input.int(3, '2', inline='lsma', group='LSMA Wave Trend Settings')
+n4 = input.int(21, 'LSMA | 1', inline='LSMA', group='LSMA Wave Trend Settings')
+n5 = input.int(0, '2', inline='LSMA', group='LSMA Wave Trend Settings')
+smalen = 2
+lsmaline = input.int(200, title='LSMA Long', group='LSMA Wave Trend Settings', inline='LSMA')
+
+//EOT 1
+//Vars
+alpha1 = 0.00
+HP = 0.00
+a1 = 0.00
+b1 = 0.00
+c1 = 0.00
+c2 = 0.00
+c3 = 0.00
+Filt = 0.00
+Peak = 0.00
+X = 0.00
+Quotient1 = 0.00
+Quotient2 = 0.00
+pi = 2 * math.asin(1)
+
+//Highpass filter cyclic components
+//whose periods are shorter than 100 bars
+alpha1 := (math.cos(.707 * 2 * pi / 100) + math.sin(.707 * 2 * pi / 100) - 1) / math.cos(.707 * 2 * pi / 100)
+HP := (1 - alpha1 / 2) * (1 - alpha1 / 2) * (close - 2 * nz(close[1]) + nz(close[2])) + 2 * (1 - alpha1) * nz(HP[1]) - (1 - alpha1) * (1 - alpha1) * nz(HP[2])
+
+//SuperSmoother Filter
+a1 := math.exp(-1.414 * pi / LPPeriod)
+b1 := 2 * a1 * math.cos(1.414 * pi / LPPeriod)
+c2 := b1
+c3 := -a1 * a1
+c1 := 1 - c2 - c3
+Filt := c1 * (HP + nz(HP[1])) / 2 + c2 * nz(Filt[1]) + c3 * nz(Filt[2])
+
+//Fast Attack - Slow Decay Algorithm
+Peak := .991 * nz(Peak[1])
+if math.abs(Filt) > Peak
+    Peak := math.abs(Filt)
+    Peak
+
+//Normalized Roofing Filter
+if Peak != 0
+    X := Filt / Peak
+    X
+
+Quotient1 := (X + K1) / (K1 * X + 1)
+Quotient2 := (X + K2) / (K2 * X + 1)
+
+// EOT 2
+
+
+//Vars
+alpha1222 = 0.00
+HP2 = 0.00
+a12 = 0.00
+b12 = 0.00
+c12 = 0.00
+c22 = 0.00
+c32 = 0.00
+Filt2 = 0.00
+Peak2 = 0.00
+X2 = 0.00
+Quotient3 = 0.00
+Quotient4 = 0.00
+
+alpha1222 := (math.cos(.707 * 2 * pi / 100) + math.sin(.707 * 2 * pi / 100) - 1) / math.cos(.707 * 2 * pi / 100)
+HP2 := (1 - alpha1222 / 2) * (1 - alpha1222 / 2) * (close - 2 * nz(close[1]) + nz(close[2])) + 2 * (1 - alpha1222) * nz(HP2[1]) - (1 - alpha1222) * (1 - alpha1222) * nz(HP2[2])
+
+//SuperSmoother Filter
+a12 := math.exp(-1.414 * pi / LPPeriod2)
+b12 := 2 * a12 * math.cos(1.414 * pi / LPPeriod2)
+c22 := b12
+c32 := -a12 * a12
+c12 := 1 - c22 - c32
+Filt2 := c12 * (HP2 + nz(HP2[1])) / 2 + c22 * nz(Filt2[1]) + c32 * nz(Filt2[2])
+
+//Fast Attack - Slow Decay Algorithm
+Peak2 := .991 * nz(Peak2[1])
+if math.abs(Filt2) > Peak2
+    Peak2 := math.abs(Filt2)
+    Peak2
+
+//Normalized Roofing Filter
+if Peak2 != 0
+    X2 := Filt2 / Peak2
+    X2
+
+Quotient4 := (X2 + K22) / (K22 * X2 + 1)
+
+// LSMAWT
+// Sources:
+src0 = open
+src1 = high
+src2 = low
+src3 = close
+src4 = hl2
+src5 = hlc3
+src6 = ohlc4
+src7 = ta.tr
+vol = volume
+
+tci(src) =>
+    ta.ema((src - ta.ema(src, n1)) / (0.025 * ta.ema(math.abs(src - ta.ema(src, n1)), n1)), n2) + 50
+
+mf(src) =>
+    100.0 - 100.0 / (1.0 + math.sum(volume * (ta.change(src) <= 0 ? 0 : src), n3) / math.sum(volume * (ta.change(src) >= 0 ? 0 : src), n3))
+
+willy(src) =>
+    60 * (src - ta.highest(src, n2)) / (ta.highest(src, n2) - ta.lowest(src, n2)) + 80
+
+csi(src) =>
+    math.avg(ta.rsi(src, n3), ta.tsi(src0, n1, n2) * 50 + 50)
+
+phoenix(src) =>
+    math.avg(tci(src), csi(src), mf(src), willy(src))
+
+tradition(src) =>
+    math.avg(tci(src), mf(src), ta.rsi(src, n3))
+
+// Indi FUnctions {
+wt1 = tradition(hlc3)
+wt2 = ta.sma(wt1, 6)
+// LSMA
+wt4 = ta.ema((wt1 - wt2) * 2 + 50, n3)
+q4 = Quotient4 * esize + ey
+// Plot44 = plot(q4, color=color.new(color.red, 50), linewidth=1, title='Quotient 2')
+//Plot EOT
+q1 = Quotient1 * esize + ey
+q2 = Quotient2 * esize + ey
+trigger = ta.sma(q1, trigno)
+// plot(trigger, color=trigcol, linewidth=2, title='Quotient 1')
+
+where2 = ta.crossover(trigger,q4) //白色上穿红色
+
+// ——————————————————————————————————————++++++++++++++++++++++++ where3 +++++++++++++++++++++----------------------------------------
+
+length3 = 100
+spike = close - open
+x = ta.stdev(spike, length3)
+y = ta.stdev(spike, length3) * -1
+
+plot(spike, color=color.new(color.white, 0), linewidth=2, title='Spike Linel')
+
+p1 = plot(x, 'Upper Line')
+
+where3 = spike > x
+
+// ___________+++++++++++______ 开单 +++++++++++++————————————————————————————————————————————————
+
+// stop_loss = ta.lowest(20) //n根K线内最低价
+stop_loss = HULL - (HULL * 0.0001)
+take_profit = ((close - stop_loss) * 1.5) + close
+var stop_loss_initial = 0.0
+var take_profit_initial = 0.0
+var num = 0
+if (where1 and where2 and where3) and num == 0 and strategy.position_size == 0
+    // 在开仓时存储止损和止盈价位 bar_index
+    stop_loss_initial := stop_loss
+    take_profit_initial := take_profit
+    num := 1
+    strategy.entry('long', strategy.long)
+
+// 下单时的止损和止盈不变
+    strategy.exit("out", "long",limit=take_profit_initial,stop=stop_loss_initial)
+
+// 绘制止损和止盈价位
+plot(stop_loss_initial, "Stop Loss", color.red)
+plot(take_profit_initial, "Take Profit", color.green)
+// plot(num)
+// plot(strategy.position_size)
+// 在每个周期结束时，检查订单状态并更新止损和止盈价位
+if strategy.position_size == 0 and num == 1
+    stop_loss_initial := stop_loss
+    take_profit_initial := take_profit
+    num := 0

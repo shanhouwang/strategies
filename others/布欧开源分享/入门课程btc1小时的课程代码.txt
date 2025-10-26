@@ -1,0 +1,33 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © huojichuanqi3 代码是录制视频随便举例的，误打误撞效果在btc 1小时交易对效果还行，仅作文案用，实盘请知晓风险！
+   
+//@version=5
+strategy("我的第一个指标", shorttitle="短名称1", overlay=true, initial_capital=1000)
+atrNo = input(14,'atr长度')
+
+ema25 = ta.ema(close, 25)
+ema100 = ta.ema(close, 100)
+l1 = plot(ema25, color = color.yellow, title = 'ema25')
+l2 = plot(ema100, color = color.green, title = 'ema100')
+
+
+buy = ta.crossover(ema25,ema100)  //金叉
+sell = ta.crossover(ema100,ema25)  //死叉
+
+//atr满足上涨条件  今天的atr数值大于前两天的 布尔型
+atr = ta.atr(atrNo) > ta.atr(atrNo)[2]
+
+//vol 满足成交量上涨条件 
+vol = volume > volume[1]
+//开多单
+if buy and atr and vol  //满足金叉 加上 满足atr2上涨 加上满足vol也是上涨
+    strategy.entry('long1', strategy.long, 1)
+if sell
+    strategy.close('long1', qty_percent=100 ,comment='关掉long1这个多单')
+// plotchar(buy, text = 'buy', color=color.green)
+// plotchar(sell, text = 'sell', color=color.red)
+
+// l_color = (ema25 > ema100) ? color.green : color.red  //如果ema25也就是黄线大于ema100这根绿线 那么就是绿色，反之就是红色
+
+// fill(l1, l2 ,color = color.new(l_color, 80))
+

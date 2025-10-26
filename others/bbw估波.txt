@@ -1,0 +1,33 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © buoudequkuairiji  原理讲解：https://www.youtube.com/watch?v=kXJmXtfhLmQ
+
+//@version=5
+strategy("bbw", overlay=true, max_bars_back=100, margin_long=1, initial_capital=10000, margin_short=1, commission_value=.05)
+
+length = input.int(24, minval=1, title='Length')  // 设置计算标准差所用的周期数
+src = input(ohlc4, title='Source')  // 设置数据源，默认是收盘价
+
+// 计算标准差
+standardDeviation = ta.stdev(src, length)
+ema = ta.ema(src, length)
+
+bbw = standardDeviation / ema
+bbwsma = ta.ema(bbw,length)
+// 在图表上绘制标准差
+// plot(standardDeviation, title='Standard Deviation', color=color.new(color.blue, 0))
+plot(bbwsma, title='ema', color=color.new(color.green, 0))
+plot(bbw, title='bbw', color=color.new(color.white, 0))
+
+
+// 估波曲线
+curve = ta.wma(ta.roc(src, 14) + ta.roc(src, 11), 10)
+
+longCondition = ta.crossover(bbw, bbwsma) and curve > 0
+if (longCondition)
+    strategy.entry("buy", strategy.long)
+
+shortCondition = ta.crossover(bbwsma, bbw)  and curve < 0
+if (shortCondition)
+    strategy.entry("sell", strategy.short)
+    // strategy.close("buy")
+

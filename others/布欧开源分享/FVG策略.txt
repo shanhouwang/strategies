@@ -1,0 +1,297 @@
+// This work is licensed under a Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © LuxAlgo
+
+//@version=5
+strategy("公允缺口策略",initial_capital = 1000,commission_value =0.04, max_lines_count=500, max_boxes_count=500, max_labels_count=500, max_bars_back=3000, overlay=true)
+//-----------------------------------------------------------------------------}
+//Strings
+//-----------------------------------------------------------------------------{
+o          = 'Options'
+sp1        = '       '
+sp2        = '              '
+
+
+//-----------------------------------------------------------------------------}
+//Settings
+//-----------------------------------------------------------------------------{
+i_mode     = input.string(         'Present'      , title = 'Mode'                   , options =['Present', 'Historical']                                              )
+
+
+len = 5 
+perc_Body  = 0.36 // input.int(   36, minval=1, maxval=36) / 100
+bxBack     = 10   // input.int(   10, minval=0, maxval=10)
+
+//FVG      
+shwFVG     = input.bool  (           true         , title = 'Show FVGs'              ,   group = 'Fair Value Gaps'                                                     )
+i_BPR      = input.bool  (           false        , title = 'Balance Price Range'    ,   group = 'Fair Value Gaps'                                                     )
+range_FVG         = input.float   (             20          , title = ' FVG 区间高度值' +sp2    ,   group = 'Fair Value Gaps'  )
+i_FVG      = input.string(           'FVG'        , title = o                        ,   group = 'Fair Value Gaps'  , options=['FVG']                           
+           ,                                                                           tooltip = 'Fair Value Gaps\nor\nImplied Fair Value Gaps'                        )
+visBxs     = input.int   (             5          , title = '# Visible FVG\'s'       ,   group = 'Fair Value Gaps'
+           ,                                       minval = 1         , maxval = 50  , tooltip = 'In the same direction'                                               )
+entryRatio  = input.float(0.5, title='缺口开单位置系数（数值越大价格越保守）')
+StopLossCandle  = input.int(1, title='缺口前面第几根k线做止损')
+profitLossRatio  = input.float(1.5, title='盈亏比')
+//FVG Style
+cFVGbl     = input.color (color.new(#00e676,  0), title = 'Bullish FVG  '          ,   group = 'Fair Value Gaps'  , inline = 'FVGbl'                                 )
+cFVGblBR   = input.color (color.new(#808000,  0), title = 'Break'                  ,   group = 'Fair Value Gaps'  , inline = 'FVGbl'                                 )
+cFVGbr     = input.color (color.new(#ff5252,  0), title = 'Bearish FVG '           ,   group = 'Fair Value Gaps'  , inline = 'FVGbr'                                 )
+cFVGbrBR   = input.color (color.new(#FF0000,  0), title = 'Break'                  ,   group = 'Fair Value Gaps'  , inline = 'FVGbr'                                 )
+
+
+//Fibonacci 
+iFib       = input.string(           'NONE'      , title = 'Fibonacci between last: ',   group = 'Fibonacci', options=['FVG', 'BPR', 'OB', 'Liq', 'VI', 'NWOG', 'NONE'])
+iExt       = input.bool  (           false       , title = 'Extend lines'            ,   group = 'Fibonacci'                                                           )
+
+
+//-----------------------------------------------------------------------------}
+//General Calculations
+//-----------------------------------------------------------------------------{
+n          =                      bar_index
+hi         =                      high  
+lo         =                      low   
+tf_msec    = timeframe.in_seconds(timeframe.period) * 1000
+maxSize    =        50
+atr        = ta.atr(10)
+per        = i_mode == 'Present' ? last_bar_index - bar_index <=  500 : true
+perB       = last_bar_index - bar_index <= 1000  ? true : false
+xloc       = iFib   ==   'OB'    ? xloc.bar_time : xloc.bar_index
+ext        = iExt                ?  extend.right : extend.none
+plus       = iFib   ==   'OB'    ?  tf_msec * 50 : 50
+mx         = math.max(close , open)
+mn         = math.min(close , open)
+body       = math.abs(close - open)
+meanBody   = ta.sma  (body  ,  len)
+
+//-----------------------------------------------------------------------------}
+//User Defined Types
+//-----------------------------------------------------------------------------{
+
+type FVG 
+    box box 
+    bool active
+    int  pos 
+
+
+var FVG     [] bFVG_UP    = array.new<    FVG   >()
+var FVG     [] bFVG_DN    = array.new<    FVG   >()
+
+var FVG     [] bBPR_UP    = array.new<    FVG   >()
+var FVG     [] bBPR_DN    = array.new<    FVG   >()
+
+
+//Pivotpoints 
+ph          = ta.pivothigh(3, 1), lPh = fixnan(ph)
+pl          = ta.pivotlow (3, 1), lPl = fixnan(pl)
+
+//Candles 
+L_body      = 
+ high - mx  < body * perc_Body and 
+ mn - low   < body * perc_Body
+
+L_bodyUP    =   body > meanBody  and L_body and close > open
+L_bodyDN    =   body > meanBody  and L_body and close < open
+
+bsNOTbodyUP = ta.barssince(not L_bodyUP)
+bsNOTbodyDN = ta.barssince(not L_bodyDN)
+
+bsIs_bodyUP = ta.barssince(    L_bodyUP)
+bsIs_bodyDN = ta.barssince(    L_bodyDN)
+
+lwst        = math.min(lPh [bsNOTbodyUP[1]], low[bsNOTbodyUP[1]])
+hgst        = math.max(high[bsNOTbodyDN[1]], lPl[bsNOTbodyDN[1]])
+
+//Imbalance
+imbalanceUP = L_bodyUP[1] and (i_FVG == 'FVG' ? low  > high[2] : low  < high[2])
+imbalanceDN = L_bodyDN[1] and (i_FVG == 'FVG' ? high < low [2] : high > low [2])
+
+
+
+var float stopLossPrice = na
+var float takeProfitPrice = na
+var bool longStarted = false
+if imbalanceUP
+    if strategy.position_size == 0 
+        mid = (low - high[2])
+        midPrice = low - (low - high[2]) * entryRatio
+        lowestLow = low[StopLossCandle]
+        midHalf = mid/2
+        if mid > range_FVG
+            takeProfitPrice := midPrice + (midPrice - lowestLow) * profitLossRatio 
+            stopLossPrice := lowestLow
+            longStarted := true
+            strategy.entry("Long", strategy.long, limit = midPrice)
+            strategy.exit("StopLoss", from_entry = "Long" ,stop = stopLossPrice)
+
+if close > takeProfitPrice
+    strategy.close("Long", comment = "止盈")
+
+// // 绘制 imbalanceUP 指标线
+// plotshape(imbalanceUP, style=shape.triangleup, location=location.belowbar, color=color.green, size=size.small)
+// plotshape(longStarted, style=shape.triangleup, location=location.belowbar, color=color.red, size=size.tiny)
+
+plotStopLossPrice = strategy.position_size > 0 ? stopLossPrice : na
+plotTakeProfitPrice = strategy.position_size > 0 ? takeProfitPrice : na
+// 在此处绘制价格线，例如：
+// 使用 plotshape 函数来绘制形状，代替水平线
+plotshape(series=plotStopLossPrice, location=location.absolute, color=color.red, style=shape.triangleup, title="Stop Loss Shape")
+plotshape(series=plotTakeProfitPrice, location=location.absolute, color=color.blue, style=shape.triangledown, title="Take Profit Shape")
+
+
+//Fair Value Gap  
+if barstate.isfirst
+    for i = 0 to visBxs -1
+        bFVG_UP.unshift(FVG.new(box(na), false))
+        bFVG_DN.unshift(FVG.new(box(na), false))
+        if i_BPR
+            bBPR_UP.unshift(FVG.new(box(na), false))
+            bBPR_DN.unshift(FVG.new(box(na), false))
+
+if imbalanceUP and per and shwFVG 
+    if imbalanceUP[1]
+        bFVG_UP.get(0).box.set_lefttop    (n -2, low    )
+        bFVG_UP.get(0).box.set_rightbottom(n +8, high[2])
+    else
+        bFVG_UP.unshift(FVG.new(
+          box.new(
+           n -2
+         ,    i_FVG == 'FVG' ? low : high[2]
+         , n, i_FVG == 'FVG' ? high[2] : low
+         , bgcolor     = i_BPR ? color(na) : color.new(cFVGbl, 90)
+         , border_color= i_BPR ? color(na) : color.new(cFVGbl, 65)
+         , text_color  = i_BPR ? color(na) : color.new(cFVGbl, 65)
+         , text_size=size.small
+         , text=i_FVG
+         )
+         , true)
+         )
+        bFVG_UP.pop().box.delete()
+
+if imbalanceDN and per and shwFVG 
+    if imbalanceDN[1]
+        bFVG_DN.get(0).box.set_lefttop    (n -2, low[2])
+        bFVG_DN.get(0).box.set_rightbottom(n +8, high  )
+    else
+        bFVG_DN.unshift(FVG.new(
+         box.new(
+           n -2
+         ,    i_FVG == 'FVG' ? low[2] : high
+         , n, i_FVG == 'FVG' ? high   : low[2]
+         , bgcolor     = i_BPR ? color(na) : color.new(cFVGbr, 90)
+         , border_color= i_BPR ? color(na) : color.new(cFVGbr, 65)
+         , text_color  = i_BPR ? color(na) : color.new(cFVGbr, 65)
+         , text_size=size.small
+         , text=i_FVG
+         )
+         , true)
+         )
+        bFVG_DN.pop().box.delete()
+
+//Balance Price Range (overlap of 2 latest FVG bull/bear)
+if i_BPR and bFVG_UP.size() > 0 and bFVG_DN.size() > 0
+    bxUP    = bFVG_UP.get(0)
+    bxDN    = bFVG_DN.get(0)
+    bxUPbtm = bxUP.box.get_bottom()
+    bxDNbtm = bxDN.box.get_bottom()
+    bxUPtop = bxUP.box.get_top()
+    bxDNtop = bxDN.box.get_top()
+    left    = math.min(bxUP.box.get_left (), bxDN.box.get_left ())
+    right   = math.max(bxUP.box.get_right(), bxDN.box.get_right())
+    
+    //
+    if bxUPbtm < bxDNtop and 
+       bxDNbtm < bxUPbtm
+        if left == bBPR_UP.get(0).box.get_left() 
+            if  bBPR_UP.get(0).active
+                bBPR_UP.get(0).box.set_right(right)
+        else
+            bBPR_UP.unshift(FVG.new(
+             box.new(
+              left, bxDNtop, right, bxUPbtm
+              , bgcolor     = i_BPR ? color.new(cFVGbl, 90) : color(na)
+              , border_color= i_BPR ? color.new(cFVGbl, 65) : color(na)
+              , text_color  = i_BPR ? color.new(cFVGbl, 65) : color(na)
+              , text_size=size.small
+              , text= 'BPR'
+              ) 
+              , true
+              , close > bxUPbtm ? 1 : close < bxDNtop ? -1 : 0
+              )
+             )
+            bBPR_UP.pop().box.delete()
+
+
+//FVG's breaks
+for i = 0 to math.min(bxBack, bFVG_UP.size() -1)
+    getUPi = bFVG_UP.get(i)
+    if getUPi.active
+        getUPi.box.set_right(bar_index +8)
+        if low  < getUPi.box.get_top() and not i_BPR
+            getUPi.box.set_border_style(line.style_dashed)
+        if low  < getUPi.box.get_bottom()
+            if not i_BPR
+                getUPi.box.set_bgcolor(color.new(cFVGblBR, 95))
+                getUPi.box.set_border_style(line.style_dotted)
+            getUPi.box.set_right(bar_index)
+            getUPi.active := false
+
+for i = 0 to math.min(bxBack, bFVG_DN.size() -1)
+    getDNi = bFVG_DN.get(i)
+    if getDNi.active
+        getDNi.box.set_right(bar_index +8)
+        if high > getDNi.box.get_bottom() and not i_BPR
+            getDNi.box.set_border_style(line.style_dashed)
+        if high > getDNi.box.get_top()
+            if not i_BPR
+                getDNi.box.set_bgcolor(color.new(cFVGbrBR, 95))
+                getDNi.box.set_border_style(line.style_dotted)
+            getDNi.box.set_right(bar_index)
+            getDNi.active := false
+
+if i_BPR
+    for i = 0 to math.min(bxBack, bBPR_UP.size() -1)
+        getUPi = bBPR_UP.get(i)
+        if getUPi.active
+            getUPi.box.set_right(bar_index +8)
+            switch getUPi.pos 
+                -1 =>
+                    if high > getUPi.box.get_bottom()
+                        getUPi.box.set_border_style(line.style_dashed)
+                    if high > getUPi.box.get_top   ()
+                        getUPi.box.set_bgcolor(color.new(cFVGblBR, 95))
+                        getUPi.box.set_border_style(line.style_dotted)
+                        getUPi.box.set_right(bar_index)
+                        getUPi.active := false
+                1 =>
+                    if low  < getUPi.box.get_top   ()
+                        getUPi.box.set_border_style(line.style_dashed)
+                    if low  < getUPi.box.get_bottom()
+                        getUPi.box.set_bgcolor(color.new(cFVGblBR, 95))
+                        getUPi.box.set_border_style(line.style_dotted)
+                        getUPi.box.set_right(bar_index)
+                        getUPi.active := false
+    
+    for i = 0 to math.min(bxBack, bBPR_DN.size() -1)
+        getDNi = bBPR_DN.get(i)
+        if getDNi.active
+            getDNi.box.set_right(bar_index +8)
+            switch getDNi.pos 
+                -1 =>
+                    if high > getDNi.box.get_bottom()
+                        getDNi.box.set_border_style(line.style_dashed)
+                    if high > getDNi.box.get_top   ()
+                        getDNi.box.set_bgcolor(color.new(cFVGbrBR, 95))
+                        getDNi.box.set_border_style(line.style_dotted)
+                        getDNi.box.set_right(bar_index)
+                        getDNi.active := false
+                1 =>
+                    if low  < getDNi.box.get_top   ()
+                        getDNi.box.set_border_style(line.style_dashed)
+                    if low  < getDNi.box.get_bottom()
+                        getDNi.box.set_bgcolor(color.new(cFVGbrBR, 95))
+                        getDNi.box.set_border_style(line.style_dotted)
+                        getDNi.box.set_right(bar_index)
+                        getDNi.active := false
+
+
+

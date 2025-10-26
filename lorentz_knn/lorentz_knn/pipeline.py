@@ -30,33 +30,47 @@ def run_backtest_pipeline(settings: Settings) -> backtest.BacktestResult:
     """Load data, compute signals, execute backtest, and export artifacts."""
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
-    print("=== 尝试连接 LongPort API 获取真实数据 ===")
-    with quote_context(settings) as ctx:
-        candles = fetch_candles(
-            ctx,
-            settings.symbol,
-            settings.interval,
-            settings.start,
-            settings.end,
-        )
-    print("✅ 成功从 LongPort API 获取真实K线数据")
+    # 统一数据加载：本地CSV优先，否则调用 LongPort 并缓存到CSV
+    price_df = None
+    if settings.use_local_data and settings.local_data_csv and Path(settings.local_data_csv).exists():
+        print("=== 使用本地CSV数据 ===")
+        price_df = data_utils.dataframe_from_csv(Path(settings.local_data_csv))
+        print(f"从本地加载 {len(price_df)} 条K线：{settings.local_data_csv}")
+    else:
+        print("=== 尝试连接 LongPort API 获取真实数据 ===")
+        with quote_context(settings) as ctx:
+            candles = fetch_candles(
+                ctx,
+                settings.symbol,
+                settings.interval,
+                settings.start,
+                settings.end,
+            )
+        print("✅ 成功从 LongPort API 获取真实K线数据")
 
-    if not candles:
-        raise RuntimeError("LongPort 未返回任何 K 线，请检查标的或时间区间。")
+        if not candles:
+            raise RuntimeError("LongPort 未返回任何 K 线，请检查标的或时间区间。")
 
-    print("=== K 线数据信息 ===")
-    print(f"获取到 {len(candles)} 条 K 线数据")
-    if candles:
-        print(f"数据类型: {type(candles[0])}")
-        print(f"第一条数据: {candles[0]}")
-        print(f"最后一条数据: {candles[-1]}")
+        print("=== K 线数据信息 ===")
+        print(f"获取到 {len(candles)} 条 K 线数据")
+        if candles:
+            print(f"数据类型: {type(candles[0])}")
+            print(f"第一条数据: {candles[0]}")
+            print(f"最后一条数据: {candles[-1]}")
 
-    price_df = data_utils.candles_to_dataframe(candles)
+        price_df = data_utils.candles_to_dataframe(candles)
+        # 写入本地CSV缓存，便于后续 --use_local_data 复用
+        try:
+            Path(settings.local_data_csv).parent.mkdir(parents=True, exist_ok=True)
+            data_utils.dataframe_to_csv(price_df, Path(settings.local_data_csv))
+            print(f"已保存本地数据CSV：{settings.local_data_csv}")
+        except Exception as e:
+            print(f"保存本地CSV失败：{e}")
 
-    print("\n=== DataFrame 概览 ===")
-    print(f"形状: {price_df.shape}")
-    print(f"列名: {list(price_df.columns)}")
-    print(f"时间范围: {price_df.index.min()} 到 {price_df.index.max()}")
+    # 后续处理沿用原逻辑
+    print("=== DataFrame 总览 ===")
+    print(price_df.head(3))
+    print(price_df.tail(3))
 
     indicator_df = build_indicator_dataframe(price_df, settings)
 

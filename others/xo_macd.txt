@@ -1,0 +1,152 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © btc_charlie / @TheParagonGrp
+
+//@version=5
+strategy('XO_macd', shorttitle="XO_macd", overlay=true, precision=2, pyramiding=1, 
+ calc_on_every_tick=true, backtest_fill_limits_assumption=1, default_qty_type=strategy.percent_of_equity, default_qty_value = 50, currency=currency.USD, slippage=1, commission_type=strategy.commission.percent,
+ commission_value=.03, process_orders_on_close=true, initial_capital=10000, margin_long=100, margin_short=100)
+
+lowest = input(5, title='多少根K线参与计算')
+RRR = input(3, title='盈亏比')
+
+longOn = input.bool(true , '是否开启多单')
+shortOn = input.bool(true , '是否开启空单')
+
+emaNo = input(200, title='ema参数')
+long_Ts2          = input.float(0.004,          title='long移动止盈参数',     minval=0,       step=0.001)
+short_Ts2          = input.float(0.002,          title='short移动止盈参数',     minval=0,       step=0.001)
+// Variables
+var ok = 0
+var countBuy = 0
+var countSell = 0
+src = input(close, title='OHLC Type')
+i_fastEMA = input(12, title='Fast EMA')
+i_slowEMA = input(25, title='Slow EMA')
+i_defEMA = input(25, title='Consolidated EMA')
+
+// Getting inputs
+fast_length = input(title="Fast Length", defval=26)
+slow_length = input(title="Slow Length", defval=100)
+src_macd = input(title="Source", defval=close)
+signal_length = input.int(title="Signal Smoothing",  minval = 1, maxval = 50, defval = 9)
+sma_source = input.string(title="Oscillator MA Type",  defval="EMA", options=["SMA", "EMA"])
+sma_signal = input.string(title="Signal Line MA Type", defval="EMA", options=["SMA", "EMA"])
+
+// Allow the option to show single or double EMA
+i_bothEMAs = input(title='Show Both EMAs', defval=true)
+
+// Define EMAs
+v_fastEMA = ta.ema(src, i_fastEMA)
+v_slowEMA = ta.ema(src, i_slowEMA)
+v_biasEMA = ta.ema(src, i_defEMA)
+
+// Color the EMAs
+emaColor = v_fastEMA > v_slowEMA ? color.green : v_fastEMA < v_slowEMA ? color.red : #FF530D
+
+// Plot EMAs
+plot(i_bothEMAs ? na : v_biasEMA, color=emaColor, linewidth=3, title='Consolidated EMA')
+plot(i_bothEMAs ? v_fastEMA : na, title='Fast EMA', color=emaColor)
+plot(i_bothEMAs ? v_slowEMA : na, title='Slow EMA', color=emaColor)
+
+// Colour the bars
+buy = v_fastEMA > v_slowEMA
+sell = v_fastEMA < v_slowEMA
+
+if buy
+    countBuy += 1
+    countBuy
+
+if buy
+    countSell := 0
+    countSell
+
+if sell
+    countSell += 1
+    countSell
+
+if sell
+    countBuy := 0
+    countBuy
+
+buysignal = countBuy < 2 and countBuy > 0 and countSell < 1 and buy and not buy[1]
+sellsignal = countSell > 0 and countSell < 2 and countBuy < 1 and sell and not sell[1]
+
+barcolor(buysignal ? color.green : na)
+barcolor(sellsignal ? color.red : na)
+
+// Plot Bull/Bear
+
+plotshape(buysignal, title='Bull', text='Bull', style=shape.triangleup, location=location.belowbar, color=color.new(color.green, 0), textcolor=color.new(color.black, 0), size=size.tiny)
+plotshape(sellsignal, title='Bear', text='Bear', style=shape.triangledown, location=location.abovebar, color=color.new(color.red, 0), textcolor=color.new(color.black, 0), size=size.tiny)
+
+// macd 计算
+fast_ma = sma_source == "SMA" ? ta.sma(src_macd, fast_length) : ta.ema(src_macd, fast_length)
+slow_ma = sma_source == "SMA" ? ta.sma(src_macd, slow_length) : ta.ema(src_macd, slow_length)
+macd = fast_ma - slow_ma
+signal = sma_signal == "SMA" ? ta.sma(macd, signal_length) : ta.ema(macd, signal_length)
+hist = macd - signal
+ema200 = ta.ema(close, emaNo)
+
+
+// 开仓时的止损和止盈价位，并存储在变量中
+long_stop_loss = ta.lowest(lowest) //5根K线内最低价
+long_take_profit = ((close - long_stop_loss) * RRR) + close 
+var long_stop_loss_initial = 0.0
+var long_take_profit_initial = 0.0
+// 多头开单
+if buysignal and hist >= 0 and ema200 < close and longOn
+    // 在开仓时存储止损和止盈价位 bar_index
+    long_stop_loss_initial := long_stop_loss
+    long_take_profit_initial := long_take_profit
+    strategy.entry('long',strategy.long)
+    strategy.exit("平仓", "long",stop=long_stop_loss_initial, comment_loss="long 止损")
+if close < ema200
+    strategy.close("long", comment="多头趋势结束 止损")
+pivotsizing = 20 //length
+pivotLookup = 1
+L_TP = long_take_profit_initial
+hih     = ta.pivothigh(high, pivotLookup, pivotLookup)
+top     = ta.valuewhen(hih, high[pivotLookup], 0)
+float highest = ta.highest(top,pivotsizing)
+moveHigh = ta.crossunder(close,highest*(1 - long_Ts2))
+L_reversal = ta.crossunder(close,L_TP)
+
+if close > L_TP and moveHigh and strategy.position_size > 0
+    strategy.close_all(comment = "多头趋势止盈")
+else if close > L_TP and L_reversal and strategy.position_size > 0
+    strategy.close_all(comment = "多头趋势不明显保护性止盈")
+
+// 开仓时的止损和止盈价位，并存储在变量中
+short_stop_loss = ta.highest(lowest) //5根K线内最高价
+short_take_profit = close - ((short_stop_loss - close) * RRR)  //计算止盈位
+var short_stop_loss_initial = 0.0
+var short_take_profit_initial = 0.0
+// 空头开单
+if sellsignal and hist <= 0 and ema200 > close and shortOn
+    // 在开仓时存储止损和止盈价位 bar_index
+    short_stop_loss_initial := short_stop_loss
+    short_take_profit_initial := short_take_profit
+    strategy.entry('short',strategy.short)
+    strategy.exit("平仓", "short",stop=short_stop_loss_initial, comment_loss="short 止损")
+
+S_TP = short_take_profit_initial
+bot     = ta.pivotlow(low, pivotLookup, pivotLookup)
+bottom     = ta.valuewhen(bot, low[pivotLookup], 0)
+float bottomst = ta.lowest(bottom,pivotsizing)
+moveBottom = ta.crossunder(close,bottomst*(1 - short_Ts2))
+S_reversal = ta.crossunder(close,S_TP)
+
+if close < L_TP and moveBottom and strategy.position_size < 0
+    strategy.close_all(comment = "空头趋势止盈")
+else if close < L_TP and S_reversal and strategy.position_size < 0
+    strategy.close_all(comment = "空头趋势不明显保护性止盈")
+
+
+
+
+// 在每个周期结束时，检查订单状态并更新止损和止盈价位
+if strategy.position_size == 0
+    long_stop_loss_initial := long_stop_loss
+    long_take_profit_initial := long_take_profit
+    short_stop_loss_initial := short_stop_loss
+    short_take_profit_initial := short_take_profit

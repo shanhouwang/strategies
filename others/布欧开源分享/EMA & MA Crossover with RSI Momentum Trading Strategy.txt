@@ -1,0 +1,48 @@
+//@version=5
+strategy("EMA & MA Crossover with RSI Momentum Trading Strategy", overlay=true, margin_long=100, margin_short=100)
+
+LengthMA = input(10)  //快线
+LengthEMA = input(10)  //慢线
+xMA = ta.sma(close, LengthMA)[1] //快线
+xEMA = ta.ema(xMA, LengthEMA)[1] //慢线
+
+rsi = ta.rsi(close, 14)
+
+//开单的第一个条件 快线大于慢线  + 收盘价要收涨 
+where1 = xMA > xEMA and close[0] > close[1]
+
+// 第二个条件rsi大于50小于70 
+where2 = rsi > 50 and rsi < 70
+
+// 第三个条件k棒的最低价大于快线
+where3 = low > xMA
+
+// 开仓时的快线值作为止损和止盈价位，并存储在变量中
+stop_loss = xMA
+take_profit = ((close - stop_loss) * 1.5) + close
+
+var stop_loss_initial = 0.0
+var take_profit_initial = 0.0
+var num = 0
+if (where1 and where2 and where3) and num == 0
+    // 在开仓时存储止损和止盈价位 bar_index
+    stop_loss_initial := stop_loss
+    take_profit_initial := take_profit
+    num := 1
+    strategy.entry('long', strategy.long)
+
+// 下单时的止损和止盈不变
+    strategy.exit("out", "long",limit=take_profit_initial,stop=stop_loss_initial)
+
+// 绘制止损和止盈价位
+plot(stop_loss_initial, "Stop Loss", color.red)
+plot(take_profit_initial, "Take Profit", color.green)
+// plot(num)
+// plot(strategy.position_size)
+// 在每个周期结束时，检查订单状态并更新止损和止盈价位
+if strategy.position_size == 0
+    stop_loss_initial := stop_loss
+    take_profit_initial := take_profit
+    num := 0
+
+

@@ -1,0 +1,155 @@
+// This Pine Script™ code is subject to the terms of the Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © EliCobra
+
+//@version=5
+indicator("波浪趋势超买超卖", "波浪趋势超买超卖", false)
+
+type bar
+    float o = open
+    float h = high
+    float l = low
+    float c = close
+
+type osc
+    float o = na
+    float s = na
+    float h = na
+
+type alerts
+    bool  s = na
+    bool  b = na
+    bool  u = na
+    bool  d = na
+
+type prompt
+    string s = ''
+    bool   c = false
+
+method notify(prompt p) =>
+    if p.c
+        alert(p.s, alert.freq_once_per_bar_close)
+        
+method any(alerts a) =>
+    string s = switch
+        a.s => 'OS Signal'    
+        a.b => 'OB Signal'    
+        a.u => 'Bullish Trend'
+        a.d => 'Bearish Trend'
+
+        =>      na
+
+    prompt.new(s, not na(s))
+
+method src(bar b, simple string src) =>
+    float x = switch src
+        'open'  =>          b.o
+        'high'  =>          b.h
+        'low'   =>          b.l
+        'close' =>          b.c
+        'oc2'   => math.avg(b.o, b.c          )
+        'hl2'   => math.avg(b.h, b.l          )
+        'hlc3'  => math.avg(b.h, b.l, b.c     )
+        'ohlc4' => math.avg(b.o, b.h, b.l, b.c)
+        'hlcc4' => math.avg(b.h, b.l, b.c, b.c)
+
+    x
+
+method stdev(float src, simple int len) =>
+    float sq  = 0.
+    float psq = 0.
+    float sum = 0.
+    
+    for k = 0 to len - 1
+        val  = nz(src[k])
+        psq :=        sq
+        sq  += (val - sq) / (1   + k  )
+        sum += (val - sq) * (val - psq)
+        
+    math.sqrt(sum / (len - 1))
+
+method wave(bar b, simple string src, simple int clen, simple int alen, simple int slen) =>
+    float x = b .src  (src                    )
+    float m = ta.ema  (x                , clen)
+    float d = x .stdev(                   clen)
+    float o = ta.ema  ((x - m) / d * 100, alen)
+    float s = ta.sma  (o                , slen)
+
+    osc.new(o, s, o - s)
+
+
+const string gw = "WaveTrend", const string gu = "UI Options"
+src  = input.string('hlc3', "Source"             , ['open', 'high', 'low', 'close', 'oc2', 'hl2', 'hlc3', 'ohlc4', 'hlcc4'],               group = gw)
+clen = input.int   (10    , "Channel Length"     ,  7,                                 50,                               1 ,               group = gw)
+alen = input.int   (21    , "Average Length"     ,  7,                                 50,                               1 ,               group = gw)
+slen = input.int   (4     , "Signal  Length"     ,  2,                                  7,                               1 ,               group = gw)
+revb = input.bool  (true  , ""                   ,                                                                           inline = '0', group = gu)
+revt = input.int   (100   , "Reversion Threshold", [100,                                                               125], inline = '0', group = gu)
+colb = input.string('None', "Bar Coloring"       , ["None",    "Midline Cross",   "Extremities",   "Reversions",   "Slope"],               group = gu)
+
+
+bar b  = bar.new (                     )
+osc wt = b  .wave(src, clen, alen, slen)
+
+
+const color colup = #5996ff
+const color coldn = #e864ff
+const color colhu = #d9a8ff
+const color colhd = #ffc973
+var   color colnt = chart.fg_color
+color       colof = 
+                      wt.o > wt.s                          ? 
+                                     color.new(colup, 50)  : 
+                                     color.new(coldn, 50)
+color       colh  = 
+                      wt.h > 0                             ? 
+                     (wt.h > wt.h[1]                       ? 
+                                     color.new(colhu, 40)  : 
+                                     color.new(colhu, 60)) : 
+                     (wt.h > wt.h[1]                       ? 
+                                     color.new(colhd, 40)  : 
+                                     color.new(colhd, 60))
+
+
+m   = hline(0   , "Mid Line", color.new(colnt, 50)       ,    hline.style_solid                        )
+max = hline(+150,                                                                display = display.none)
+hh  = hline(+125,                                                                display = display.none)
+lh  = hline(+100,                                                                display = display.none)
+min = hline(-150,                                                                display = display.none)
+ll  = hline(-125,                                                                display = display.none)
+hl  = hline(-100,                                                                display = display.none)
+// h   = plot (wt.h, "H"       , colh                       , 1, plot.style_area                          )
+w   = plot (wt.o, "WT"      , wt.o > wt.s ? colup : coldn, 1, plot.style_line                          )
+s   = plot (wt.s,                                                                display = display.none)
+
+fill(lh, hh , color.new(colhd, 86))
+fill(hh, max, color.new(colhd, 79))
+fill(ll, hl , color.new(colhu, 87))
+fill(ll, min, color.new(colhu, 80))
+fill(w , s  ,           colof     )
+
+alerts a = alerts.new(
+     ta.crossover (wt.o, wt.s) and wt.o < -revt,
+     ta.crossunder(wt.o, wt.s) and wt.o >  revt,
+     ta.crossover (wt.o,    0)                 ,
+     ta.crossunder(wt.o,    0)                 )
+
+
+
+// plot(revb ? a.b ? wt.o + 40 : na : na, "OB")
+// plotchar(revb ? a.s ? wt.o - 40 : na : na, "OS", "⚬", location.absolute, colup, size = size.tiny)
+
+
+// alertcondition(a.b, "Overbought"        , 'OB Signal'    )
+// alertcondition(a.s, "Oversold  "        , 'OS Signal'    )
+// alertcondition(a.u, "Midline Crossover ", 'Bullish Trend')
+// alertcondition(a.d, "Midline Crossunder", 'Bearish Trend')
+
+a.any().notify()
+
+color col = switch colb
+    "Midline Cross" => wt.o > 0    ? colup                : coldn
+    "Extremities"   => wt.o > revt ? colup : wt.o < -revt ? coldn : colnt
+    "Reversions"    => a.b         ? coldn : a.s          ? colup : colnt
+    "Slope"         => wt.o > wt.s ? colup                : coldn
+    "None"          => na
+barcolor(col)

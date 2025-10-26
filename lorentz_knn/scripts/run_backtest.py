@@ -41,6 +41,10 @@ def main() -> None:
     # 新增：ADX 过滤参数
     parser.add_argument("--use_adx_filter", action="store_true", help="启用 ADX 过滤。")
     parser.add_argument("--adx_threshold", type=float, help="ADX 阈值。")
+    # 新增：本地数据开关
+    parser.add_argument("--use_local_data", action="store_true", help="使用本地CSV数据（若存在）。")
+    parser.add_argument("--local_data_csv", help="指定本地CSV路径，默认 artifacts/data.csv")
+
     args = parser.parse_args()
 
     overrides = {}
@@ -88,6 +92,11 @@ def main() -> None:
         overrides["use_adx_filter"] = True
     if getattr(args, "adx_threshold", None) is not None:
         overrides["adx_threshold"] = args.adx_threshold
+    # 新增：本地数据设置
+    if args.use_local_data:
+        overrides["use_local_data"] = True
+    if getattr(args, "local_data_csv", None):
+        overrides["local_data_csv"] = args.local_data_csv
 
     settings = Settings(**overrides)
     result = run_backtest_pipeline(settings)

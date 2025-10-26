@@ -195,6 +195,9 @@ class Settings(BaseSettings):
     artifacts_dir: Path = Field(Path("artifacts"), description="输出目录")
     trades_csv: Path = Field(Path("artifacts/lorentz_knn_trades.csv"))
     chart_path: Path = Field(Path("artifacts/lorentz_knn.png"))
+    # 追加：本地数据开关与路径
+    use_local_data: bool = Field(False, description="是否优先使用本地CSV数据")
+    local_data_csv: Path = Field(Path("artifacts/data.csv"), description="本地K线数据CSV路径")
 
     class Config:
         env_file = ".env"
@@ -226,6 +229,6 @@ class Settings(BaseSettings):
             raise ValueError("分批腿的 ratio 总和不能超过 1")
         return value
 
-    @validator("artifacts_dir", "trades_csv", "chart_path", pre=True)
+    @validator("artifacts_dir", "trades_csv", "chart_path", "local_data_csv", pre=True)
     def expand_paths(cls, value: Path | str) -> Path:
         return Path(value).expanduser()
