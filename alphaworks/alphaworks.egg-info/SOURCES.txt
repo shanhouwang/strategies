@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+alphaworks/__init__.py
+alphaworks/backtest.py
+alphaworks/config.py
+alphaworks/data.py
+alphaworks/indicators.py
+alphaworks/longport_client.py
+alphaworks/pipeline.py
+alphaworks/plotting.py
+alphaworks.egg-info/PKG-INFO
+alphaworks.egg-info/SOURCES.txt
+alphaworks.egg-info/dependency_links.txt
+alphaworks.egg-info/requires.txt
+alphaworks.egg-info/top_level.txt

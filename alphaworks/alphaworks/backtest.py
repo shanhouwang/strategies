@@ -58,6 +58,8 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
     take_profit_price: float | None = None
     trades: List[Trade] = []
     equity_points: List[Tuple[pd.Timestamp, float]] = []
+    cooldown_long = 0
+    cooldown_short = 0
 
     def bars_between(start: pd.Timestamp | None, end: pd.Timestamp) -> int:
         if start is None:
@@ -65,7 +67,7 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
         return len(df.loc[start:end])
 
     def exit_long(ts: pd.Timestamp, exec_price: float, reason: str) -> None:
-        nonlocal cash, position, entry_price, entry_time, stop_price, take_profit_price, entry_atr
+        nonlocal cash, position, entry_price, entry_time, stop_price, take_profit_price, entry_atr, cooldown_long
         qty = position
         if qty <= 0:
             return
@@ -94,9 +96,11 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
         stop_price = None
         take_profit_price = None
         entry_atr = None
+        if settings.cooldown_bars > 0:
+            cooldown_long = settings.cooldown_bars
 
     def exit_short(ts: pd.Timestamp, exec_price: float, reason: str) -> None:
-        nonlocal cash, position, entry_price, entry_time, stop_price, take_profit_price, entry_atr
+        nonlocal cash, position, entry_price, entry_time, stop_price, take_profit_price, entry_atr, cooldown_short
         qty = abs(position)
         if qty <= 0:
             return
@@ -125,6 +129,41 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
         stop_price = None
         take_profit_price = None
         entry_atr = None
+        if settings.cooldown_bars > 0:
+            cooldown_short = settings.cooldown_bars
+
+    def determine_position_size(
+        direction: str,
+        equity_value: float,
+        price_for_entry: float,
+        atr_value: float | None,
+    ) -> int:
+        qty = 0
+        if (
+            settings.risk_per_trade_pct > 0
+            and atr_value is not None
+            and atr_value > 0
+        ):
+            atr_multiplier = (
+                settings.risk_atr_multiplier
+                if settings.risk_atr_multiplier and settings.risk_atr_multiplier > 0
+                else (
+                    settings.atr_stop_multiplier
+                    if settings.atr_stop_multiplier > 0
+                    else 2.0
+                )
+            )
+            risk_per_share = atr_value * atr_multiplier
+            if risk_per_share > 0:
+                risk_budget = equity_value * settings.risk_per_trade_pct
+                qty = int(risk_budget // risk_per_share)
+        if qty <= 0:
+            qty = int(cash // price_for_entry)
+        elif direction == "long":
+            qty = min(qty, int(cash // price_for_entry))
+        elif direction == "short":
+            qty = min(qty, int(cash // price_for_entry))
+        return qty
 
     for ts, row in df.iterrows():
         price = float(row["close"])
@@ -135,9 +174,22 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
         equity = cash + position * price
         equity_points.append((ts, equity))
 
-        long_entry_signal = row.get("long_entry", 0) == 1
+        if cooldown_long > 0:
+            cooldown_long -= 1
+        if cooldown_short > 0:
+            cooldown_short -= 1
+
+        long_entry_signal = (
+            settings.enable_long
+            and cooldown_long == 0
+            and row.get("long_entry", 0) == 1
+        )
         long_exit_signal = row.get("long_exit", 0) == 1
-        short_entry_signal = settings.enable_short and row.get("short_entry", 0) == 1
+        short_entry_signal = (
+            settings.enable_short
+            and cooldown_short == 0
+            and row.get("short_entry", 0) == 1
+        )
         short_exit_signal = settings.enable_short and row.get("short_exit", 0) == 1
 
         if position > 0:
@@ -182,7 +234,7 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
 
         if position == 0:
             if long_entry_signal:
-                qty = int(cash // price)
+                qty = determine_position_size("long", equity, price, current_atr)
                 if qty == 0:
                     continue
                 exec_price = price + settings.slippage
@@ -203,7 +255,7 @@ def run_backtest(data: pd.DataFrame, settings: Settings) -> BacktestResult:
                     else None
                 )
             elif short_entry_signal:
-                qty = int(cash // price)
+                qty = determine_position_size("short", equity, price, current_atr)
                 if qty == 0:
                     continue
                 exec_price = price - settings.slippage

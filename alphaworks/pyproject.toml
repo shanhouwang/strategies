@@ -3,9 +3,9 @@ requires = ["setuptools>=67.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "supertrend"
+name = "alphaworks"
 version = "0.1.0"
-description = "基于 LongPort OpenAPI 的超级趋势交易回测工具。"
+description = "多策略量化研究与回测工具集（含 Supertrend、Turtle 等）。"
 authors = [
   { name = "Shawn", email = "shawn@example.com" }
 ]
@@ -29,4 +29,4 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["supertrend"]
+include = ["alphaworks"]

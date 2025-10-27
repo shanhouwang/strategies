@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from datetime import datetime
-
-from . import backtest, data as data_utils, indicators, plotting
+from . import backtest, data as data_utils
 from .config import Settings
 from .longport_client import fetch_candles, quote_context
-
+from .strategies import create_strategy
 
 
 def run_backtest_pipeline(settings: Settings) -> backtest.BacktestResult:
-    """拉取数据、执行超级趋势回测并生成输出。"""
+    """拉取数据、执行回测并生成输出。"""
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
 
     print("=== 尝试连接 LongPort API 获取真实数据 ===")
@@ -37,7 +34,7 @@ def run_backtest_pipeline(settings: Settings) -> backtest.BacktestResult:
         print(f"最后一条数据: {candles[-1]}")
 
     price_df = data_utils.candles_to_dataframe(candles)
-    
+
     print(f"\n=== DataFrame 信息 ===")
     print(f"DataFrame 形状: {price_df.shape}")
     print(f"列名: {list(price_df.columns)}")
@@ -49,17 +46,25 @@ def run_backtest_pipeline(settings: Settings) -> backtest.BacktestResult:
     print(price_df.tail())
     print(f"\n基本统计信息:")
     print(price_df.describe())
-    
-    indicator_df = indicators.supertrend(
-        price_df,
-        period=settings.supertrend_period,
-        multiplier=settings.supertrend_multiplier,
-        atr_length=settings.atr_period or settings.supertrend_period,
+
+    strategy = create_strategy(
+        settings.strategy,
+        settings=settings,
+        params=settings.strategy_params,
     )
+    print(
+        f"\n=== 使用策略 ===\n标识：{settings.strategy}\n"
+        f"类名：{strategy.__class__.__name__}\n参数：{strategy.params}"
+    )
+    indicator_df = strategy.prepare_data(price_df)
 
     result = backtest.run_backtest(indicator_df, settings)
 
+    trades_path = settings.trades_path_for(strategy.name)
+    trades_path.parent.mkdir(parents=True, exist_ok=True)
+
     if not result.trade_log.empty:
+
         def translate_exit_mode(reason: str) -> str:
             if isinstance(reason, str):
                 if "止损" in reason:
@@ -99,12 +104,24 @@ def run_backtest_pipeline(settings: Settings) -> backtest.BacktestResult:
             "exit_mode",
         ]
         trade_log = enriched_log[export_columns].rename(columns=rename_map)
-        trade_log.to_csv(settings.trades_csv, index=False)
+        trade_log.to_csv(trades_path, index=False)
         total_profit = enriched_log["pnl"].sum()
         print(f"总净利润：{total_profit:.2f}")
     else:
-        settings.trades_csv.write_text("未产生任何交易。\n")
+        trades_path.write_text("未产生任何交易。\n")
 
-    plotting.plot_supertrend(indicator_df, result.trades, Path(settings.chart_path))
+    chart_path = settings.chart_path_for(strategy.name)
+    chart_path.parent.mkdir(parents=True, exist_ok=True)
+    if strategy.plot(
+        indicator_df,
+        result.trades,
+        chart_path,
+        result.equity_curve,
+        settings.initial_capital,
+    ) is None:
+        print("当前策略未生成图表。")
+
+    settings.trades_csv = trades_path
+    settings.chart_path = chart_path
 
     return result

@@ -11,14 +11,14 @@
 1. `scripts/run_backtest.py` 负责整体流程：
    1. 从环境变量构建 API 上下文；
    2. 拉取历史数据；
-   3. 计算指标与信号；
+   3. 根据配置动态加载策略，计算指标与信号；
    4. 执行回测；
-   5. 生成图表并写入交易日志。
-2. `supertrend/longport_client.py` 使用官方 QuoteContext 获取历史 K 线并管理上下文。
-3. `supertrend/data.py` 将 LongPort K 线转换为整洁的 pandas 数据框。
-4. `supertrend/indicators.py` 依托 pandas-ta 生成超级趋势指标并整理信号列。
-5. `supertrend/backtest.py` 执行策略回测并返回绩效与交易列表。
-6. `supertrend/plotting.py` 生成 matplotlib 图表用于收益回顾。
+   5. 调用策略自带的可视化方法并写入交易日志。
+2. `alphaworks/longport_client.py` 使用官方 QuoteContext 获取历史 K 线并管理上下文。
+3. `alphaworks/data.py` 将 LongPort K 线转换为整洁的 pandas 数据框。
+4. `alphaworks/strategies/` 提供策略抽象类、注册器与内置策略实现，内部可调用 `alphaworks/indicators.py` 等工具。
+5. `alphaworks/backtest.py` 执行策略回测并返回绩效与交易列表。
+6. `alphaworks/plotting.py` 生成 matplotlib 图表用于收益回顾。
 
 ### 依赖
 - `longport-openapi` Python SDK。
@@ -44,3 +44,4 @@
 - 按上述结构实现各模块。
 - 提供配置文件或命令行参数用于灵活控制。
 - 编写 README，说明环境配置、回测运行及向实盘扩展的思路。
+- 针对更多策略形态，补充示例与回测图表输出。
