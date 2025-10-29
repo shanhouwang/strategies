@@ -1,7 +1,8 @@
-python scripts/run_backtest.py \
+./venv/bin/python scripts/run_backtest.py \
 --symbol SOXL.US \
---strategy turtle \
+--strategy vegas_tunnel \
 --enable-long \
+
 --strategy-param entry_window=55 \
 --strategy-param exit_window=20 \
 --strategy-param atr_period=20 \
@@ -13,6 +14,7 @@ python scripts/run_backtest.py \
 --cooldown-bars 5 \
 --atr-stop-multiplier 2.5 \
 --interval 60m \
+
 --start 2024-01-01T00:00:00 \
 --end 2025-10-24T23:59:00
 
@@ -20,3 +22,5 @@ python scripts/run_backtest.py \
 --enable-short \
 --strategy-param secondary_entry_window=55 \
 --strategy-param secondary_exit_window=20 \
+
+
