@@ -17,12 +17,14 @@ try:  # pragma: no cover - optional dependency
     from longport.openapi import (
         OrderSide,
         OrderType,
+        OutsideRTH,
         PushOrderChanged,
         TimeInForceType,
+        TopicType,
         TradeContext,
     )
 except ImportError:  # pragma: no cover - runtime fallback
-    OrderSide = OrderType = PushOrderChanged = TimeInForceType = TradeContext = None  # type: ignore[assignment]
+    OrderSide = OrderType = OutsideRTH = PushOrderChanged = TimeInForceType = TopicType = TradeContext = None  # type: ignore[assignment]
 
 
 class StockDeepseekOkPlusStrategy(StockDeepseekStrategy):
@@ -130,7 +132,7 @@ class LongbridgeTradeExecutor:
         self.symbol = symbol
         self.allow_short = allow_short
         self.test_mode = test_mode
-        self.order_type = default_order_type or (OrderType.LO if OrderType else None)
+        self.order_type = default_order_type or (OrderType.MO if OrderType else None)
         self.time_in_force = default_time_in_force or (
             TimeInForceType.Day if TimeInForceType else None
         )
@@ -148,10 +150,11 @@ class LongbridgeTradeExecutor:
         if self._trade_ctx is None:
             cfg = build_config(self.settings)
             self._trade_ctx = TradeContext(cfg)
-        if not self._subscribed:
+        if not self._subscribed and TopicType is not None:
             try:
                 self._trade_ctx.set_on_order_changed(self._handle_order_event)
-                self._trade_ctx.subscribe(["order"])
+                topic = getattr(TopicType, "Private", TopicType)
+                self._trade_ctx.subscribe([topic])
                 self._subscribed = True
             except Exception as exc:  # pragma: no cover - SDK 运行时异常
                 print(f"⚠️ Longbridge 订单推送订阅失败: {exc}")
@@ -184,6 +187,15 @@ class LongbridgeTradeExecutor:
         order_side = OrderSide.Buy if side.upper() == "BUY" else OrderSide.Sell
         order_type = self.order_type or OrderType.LO
         tif = self.time_in_force or TimeInForceType.Day
+        outside_flag = None
+        if OutsideRTH is not None:
+            outside_flag = OutsideRTH.AnyTime if self.outside_rth else OutsideRTH.RTHOnly
+        submit_kwargs: Dict[str, Any] = {
+            "submitted_price": price,
+            "remark": remark,
+        }
+        if outside_flag is not None:
+            submit_kwargs["outside_rth"] = outside_flag
         try:
             order_id = ctx.submit_order(
                 self.symbol,
@@ -191,13 +203,12 @@ class LongbridgeTradeExecutor:
                 order_side,
                 quantity,
                 tif,
-                submitted_price=price,
-                outside_rth=self.outside_rth,
-                remark=remark,
+                **submit_kwargs,
             )
             print(
                 f"📤 Longbridge 下单成功 id={order_id} "
-                f"{order_side.name} {quantity} @ {price:.2f}"
+                f"{getattr(order_side, 'name', str(order_side))} "
+                f"{quantity} @ {price:.2f}"
             )
         except Exception as exc:  # pragma: no cover - 网络/账户异常
             print(f"❌ Longbridge 下单失败: {exc}")
@@ -263,6 +274,119 @@ class LongbridgeTradeExecutor:
             desc = f"{signal}: {action_reason}"
             self._submit_order(order_side, qty, price, f"{desc} | {reason}")
 
+    @staticmethod
+    def _extract_value(record: Any, keys: Tuple[str, ...]) -> float | None:
+        for key in keys:
+            value = None
+            if isinstance(record, dict):
+                value = record.get(key)
+            else:
+                value = getattr(record, key, None)
+            if value is None:
+                continue
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                continue
+        return None
+
+    def fetch_available_cash(self) -> float | None:
+        if self.test_mode:
+            return None
+        try:
+            ctx = self._ensure_ctx()
+            balances = ctx.account_balance()
+        except Exception as exc:
+            print(f"⚠️ 获取账户资金失败: {exc}")
+            return None
+        items = balances if isinstance(balances, (list, tuple)) else [balances]
+        if not items:
+            return None
+        record = items[0]
+        value = self._extract_value(
+            record,
+            (
+                "buy_power",
+                "total_cash",
+                "net_assets",
+                "remaining_finance_amount",
+            ),
+        )
+        if value is None and getattr(record, "cash_infos", None):
+            for info in record.cash_infos:
+                value = self._extract_value(
+                    info,
+                    (
+                        "available_cash",
+                        "withdraw_cash",
+                        "cash",
+                        "balance",
+                    ),
+                )
+                if value is not None:
+                    break
+        return value
+
+    def fetch_position_snapshot(self) -> Optional[Dict[str, Any]]:
+        if self.test_mode:
+            return None
+        try:
+            ctx = self._ensure_ctx()
+            positions = ctx.stock_positions(symbols=[self.symbol])
+        except Exception as exc:
+            print(f"⚠️ 获取实盘持仓失败: {exc}")
+            return None
+        channels = getattr(positions, "channels", None)
+        if not channels:
+            return None
+        for channel in channels:
+            for record in getattr(channel, "positions", []) or []:
+                qty = self._extract_value(record, ("quantity", "qty", "position"))
+                if qty is None or abs(qty) < 1e-6:
+                    continue
+                side = "long" if qty > 0 else "short"
+                entry = self._extract_value(
+                    record,
+                    ("average_price", "avg_price", "cost_price", "price"),
+                )
+                return {
+                    "side": side,
+                    "size": int(abs(round(qty))),
+                    "entry_price": float(entry or 0.0),
+                }
+        return None
+
+    def estimate_max_quantity(
+        self,
+        *,
+        price: float,
+        side: str,
+        order_type: OrderType | None = None,
+    ) -> Dict[str, float | int] | None:
+        if self.test_mode:
+            return None
+        try:
+            ctx = self._ensure_ctx()
+            response = ctx.estimate_max_purchase_quantity(
+                self.symbol,
+                order_type or self.order_type or OrderType.MO,
+                OrderSide.Buy if side.lower() == "buy" else OrderSide.Sell,
+                price,
+            )
+        except Exception as exc:
+            print(f"⚠️ 估算最大下单量失败: {exc}")
+            return None
+        result: Dict[str, float | int] = {}
+        result["cash"] = int(getattr(response, "cash_max_qty", 0) or 0)
+        result["margin"] = int(getattr(response, "margin_max_qty", 0) or 0)
+        buying_power = getattr(response, "buying_power", None)
+        if buying_power is not None:
+            try:
+                result["buying_power"] = float(buying_power)
+            except (TypeError, ValueError):
+                pass
+        return result
+
     def close(self) -> None:
         """释放 TradeContext，避免资源泄露。"""
         if self._trade_ctx is not None:
@@ -272,7 +396,8 @@ class LongbridgeTradeExecutor:
             except Exception:  # pragma: no cover - 连接已断开
                 pass
             try:
-                self._trade_ctx.close()
+                if hasattr(self._trade_ctx, "close"):
+                    self._trade_ctx.close()  # type: ignore[attr-defined]
             finally:
                 self._trade_ctx = None
                 self._subscribed = False

@@ -137,6 +137,29 @@ def fetch_price_dataframe(symbol: str, interval: str, points: int) -> pd.DataFra
     raise RuntimeError(f"未能获取 {symbol} 的 {interval} K线数据，已尝试回退 {max_attempts} 天。")
 
 
+def get_live_position_snapshot() -> Dict[str, Any] | None:
+    global portfolio_state
+    if trade_executor:
+        snapshot = trade_executor.fetch_position_snapshot()
+        if snapshot is not None:
+            portfolio_state = snapshot
+            return snapshot
+        portfolio_state = None
+    return portfolio_state
+
+
+def get_available_cash() -> float | None:
+    if trade_executor:
+        return trade_executor.fetch_available_cash()
+    return None
+
+
+def estimate_max_qty(price: float, side: str) -> Dict[str, float | int] | None:
+    if trade_executor:
+        return trade_executor.estimate_max_quantity(price=price, side=side)
+    return None
+
+
 def _kline_text(df_slice: pd.DataFrame) -> str:
     records = strategy._kline_records(df_slice)  # type: ignore[attr-defined]
     lines = []
@@ -215,9 +238,10 @@ def analyze_with_deepseek(df_slice: pd.DataFrame) -> Dict[str, Any]:
     levels = strategy._support_levels(df_slice)  # type: ignore[attr-defined]
     trend = strategy._trend_from_row(row)  # type: ignore[attr-defined]
     last_signal = signal_history[-1] if signal_history else None
+    snapshot = get_live_position_snapshot()
     position_text = (
-        f"{portfolio_state['side']} 仓位 {portfolio_state['size']} 股"
-        if portfolio_state
+        f"{snapshot['side']} 仓位 {snapshot['size']} 股"
+        if snapshot
         else "当前无持仓"
     )
     last_signal_desc = (
@@ -253,7 +277,12 @@ def analyze_with_deepseek(df_slice: pd.DataFrame) -> Dict[str, Any]:
     return parsed
 
 
-def calculate_intelligent_position(signal_data: Dict[str, Any], price: float) -> int:
+def calculate_intelligent_position(
+    signal_data: Dict[str, Any],
+    price: float,
+    available_cash: float | None,
+    max_qty_info: Dict[str, float | int] | None,
+) -> int:
     config = TRADE_CONFIG["position_management"]
     if not config.get("enable_intelligent_position", True):
         return max(config.get("min_shares", 1), 1)
@@ -263,10 +292,22 @@ def calculate_intelligent_position(signal_data: Dict[str, Any], price: float) ->
         "MEDIUM": config["medium_confidence_multiplier"],
         "LOW": config["low_confidence_multiplier"],
     }.get(confidence, config["medium_confidence_multiplier"])
-    suggested_cash = config["base_cash_amount"] * multiplier
-    capital = config.get("account_capital", settings.initial_capital)
-    max_cash = max(capital * config["max_position_ratio"], config["base_cash_amount"])
-    final_cash = min(suggested_cash, max_cash)
+    capital_source = (
+        available_cash
+        if available_cash is not None
+        else config.get("account_capital", settings.initial_capital)
+    )
+    capital = max(float(capital_source), 0.0)
+    max_cash = capital * config["max_position_ratio"]
+    suggested_cash = max_cash * multiplier
+    if available_cash is not None:
+        suggested_cash = min(suggested_cash, available_cash)
+    cash_limit = None
+    if max_qty_info:
+        cash_limit = max_qty_info.get("cash")
+        if cash_limit:
+            suggested_cash = min(suggested_cash, float(cash_limit) * price)
+    final_cash = suggested_cash
     price = max(price, 1e-6)
     min_shares = max(config.get("min_shares", 1), 1)
     shares = max(int(final_cash // price), min_shares)
@@ -278,12 +319,21 @@ def execute_trade(signal_data: Dict[str, Any], price_data: Dict[str, Any], df_sl
 
     signal = signal_data.get("signal", "HOLD").upper()
     price = price_data["price"]
-    position_size = calculate_intelligent_position(signal_data, price)
-    current_position = {
-        "side": portfolio_state.get("side"),
-        "size": portfolio_state.get("size", 0),
-        "entry_price": portfolio_state.get("entry_price"),
-    } if portfolio_state else None
+    available_cash = get_available_cash()
+    max_qty_info: Dict[str, float | int] | None = None
+    if signal == "BUY":
+        max_qty_info = estimate_max_qty(price, "BUY")
+    if available_cash is not None:
+        print(f"💰 当前可用资金: ${available_cash:,.2f}")
+    else:
+        print("💰 当前可用资金: 未获取（测试模式或 API 失败）")
+    position_size = calculate_intelligent_position(
+        signal_data,
+        price,
+        available_cash,
+        max_qty_info,
+    )
+    current_position = get_live_position_snapshot()
 
     def _set_position(side: str | None, size: int = 0) -> None:
         nonlocal price
@@ -313,6 +363,15 @@ def execute_trade(signal_data: Dict[str, Any], price_data: Dict[str, Any], df_sl
         _set_position(None)
 
     if trade_executor:
+        if max_qty_info:
+            buying_power = max_qty_info.get("buying_power")
+            if buying_power:
+                print(f"🧾 Buying Power: ${float(buying_power):,.2f}")
+            print(
+                f"📊 最大下单量（现金/融资）: "
+                f"{int(max_qty_info.get('cash', 0) or 0)} / "
+                f"{int(max_qty_info.get('margin', 0) or 0)} 股"
+            )
         try:
             trade_executor.sync_position(
                 signal=signal,
@@ -324,6 +383,8 @@ def execute_trade(signal_data: Dict[str, Any], price_data: Dict[str, Any], df_sl
             )
         except Exception as exc:
             print(f"❌ Longbridge 执行异常: {exc}")
+        else:
+            get_live_position_snapshot()
 
     if TRADE_CONFIG["test_mode"]:
         print("（测试模式）仅记录信号，未真实下单。")
