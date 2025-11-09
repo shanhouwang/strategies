@@ -49,6 +49,7 @@ class SupertrendStrategy(Strategy):
             equity_curve=equity_curve,
             initial_capital=initial_capital,
             output_path=output_path,
+            title=f"{self.name} 策略资金曲线",
         )
 
 

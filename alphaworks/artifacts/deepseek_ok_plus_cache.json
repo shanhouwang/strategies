@@ -1,0 +1,1059 @@
+{
+  "2025-11-06T22:30:00": {
+    "signal": "SELL",
+    "reason": "三重均线死叉共振，RSI超卖但趋势延续，价格位于布林下轨附近，短期和中期均为下跌趋势，MACD空头排列，建议顺势做空",
+    "stop_loss": 46.8,
+    "take_profit": 46.1,
+    "confidence": "HIGH"
+  },
+  "2025-11-06T22:35:00": {
+    "signal": "HOLD",
+    "reason": "短期转强但仍在阻力下方，K2阳线收复K1跌幅但未突破关键阻力46.91，RSI仍处超卖区域，需等待明确突破信号",
+    "stop_loss": 46.09,
+    "take_profit": 46.91,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T22:40:00": {
+    "signal": "HOLD",
+    "reason": "三根K线形成震荡格局，K2阳线被K3阴线完全吞噬，价格在46.37关键支撑附近徘徊。RSI超卖但MACD空头排列，未突破46.91阻力前不宜做多，跌破46.09支撑则转空",
+    "stop_loss": 46.09,
+    "take_profit": 46.91,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T22:45:00": {
+    "signal": "HOLD",
+    "reason": "价格在46.37-46.65区间震荡，K4阳线未突破前高46.65，RSI超卖但MACD仍空头排列，需等待明确突破信号",
+    "stop_loss": 46.09,
+    "take_profit": 46.98,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T22:50:00": {
+    "signal": "SELL",
+    "reason": "价格跌破关键支撑45.64，K5大阴线确认下跌动能，RSI超卖但MACD空头排列强化，趋势明确向下",
+    "stop_loss": 46.1,
+    "take_profit": 44.8,
+    "confidence": "HIGH"
+  },
+  "2025-11-06T22:55:00": {
+    "signal": "SELL",
+    "reason": "价格跌破关键支撑45.64，K5大阴线确认下跌动能，RSI超卖但MACD空头排列强化，趋势明确向下",
+    "stop_loss": 46.1,
+    "take_profit": 44.8,
+    "confidence": "HIGH"
+  },
+  "2025-11-06T23:00:00": {
+    "signal": "SELL",
+    "reason": "连续5根K线4阴1阳，K5大阴线-2.20%确认下跌动能，价格跌破关键支撑44.29，RSI超卖但MACD空头排列强化，趋势明确向下",
+    "stop_loss": 45.7,
+    "take_profit": 42.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-06T23:05:00": {
+    "signal": "HOLD",
+    "reason": "价格反弹至44.73但仍处下跌趋势，RSI超卖但MACD空头排列，需观察能否站稳44.29支撑",
+    "stop_loss": 45.1,
+    "take_profit": 43.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:10:00": {
+    "signal": "HOLD",
+    "reason": "价格触及44.29关键支撑但未确认企稳，RSI超卖但MACD空头排列，需等待明确反弹信号",
+    "stop_loss": 43.8,
+    "take_profit": 45.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:15:00": {
+    "signal": "HOLD",
+    "reason": "价格虽从支撑44.10反弹至44.81，但仍在所有均线下方，MACD空头排列，需等待更明确的反转信号确认趋势转变",
+    "stop_loss": 43.8,
+    "take_profit": 46.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:25:00": {
+    "signal": "HOLD",
+    "reason": "价格在44.10支撑附近震荡，RSI超卖但趋势仍为强势下跌，MACD空头排列，等待明确突破信号",
+    "stop_loss": 43.8,
+    "take_profit": 45.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:30:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑44.10附近震荡，RSI超卖(26.5)但趋势仍为强势下跌，MACD空头排列，等待明确突破信号确认方向",
+    "stop_loss": 43.8,
+    "take_profit": 45.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:35:00": {
+    "signal": "HOLD",
+    "reason": "价格跌破前支撑44.10至43.56，RSI超卖(26.5)但趋势仍强势下跌，MACD空头排列，等待明确反弹信号或进一步下跌确认",
+    "stop_loss": 44.5,
+    "take_profit": 42.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:40:00": {
+    "signal": "HOLD",
+    "reason": "连续5根阴线强势下跌，RSI超卖(24.91)但趋势未改，价格接近静态支撑43.13，等待明确反弹信号或跌破支撑确认",
+    "stop_loss": 42.8,
+    "take_profit": 44.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:45:00": {
+    "signal": "HOLD",
+    "reason": "连续5根阴线后出现小幅反弹阳线，但仍在静态支撑43.01附近震荡，RSI超卖(23.92)但趋势仍为强势下跌，需等待明确反转信号或跌破支撑确认",
+    "stop_loss": 42.8,
+    "take_profit": 44.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:50:00": {
+    "signal": "HOLD",
+    "reason": "连续下跌后出现小幅反弹，但仍在静态支撑42.93附近震荡，RSI超卖(25.31)但MACD空头且趋势仍为强势下跌，需等待明确反转信号或跌破支撑确认方向",
+    "stop_loss": 42.5,
+    "take_profit": 44.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-06T23:55:00": {
+    "signal": "HOLD",
+    "reason": "价格触及静态支撑42.71但未确认突破，RSI超卖(21.46)但MACD空头且趋势强势下跌，需等待明确方向信号",
+    "stop_loss": 42.5,
+    "take_profit": 43.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:00:00": {
+    "signal": "HOLD",
+    "reason": "价格反弹至43.67但仍受制于MA均线压力(43.28/44.72)，RSI超卖修复但MACD仍为空头，需等待突破44.72确认反转",
+    "stop_loss": 42.18,
+    "take_profit": 44.72,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:05:00": {
+    "signal": "HOLD",
+    "reason": "价格在43.22附近震荡，虽接近支撑42.71但MACD仍为空头，RSI超卖但未确认反转，需等待突破44.72阻力确认趋势转变",
+    "stop_loss": 42.5,
+    "take_profit": 44.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:10:00": {
+    "signal": "HOLD",
+    "reason": "价格在支撑42.71附近震荡，MACD仍为空头，RSI超卖但未确认反转，需等待明确突破信号",
+    "stop_loss": 42.5,
+    "take_profit": 44.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑42.71附近震荡，MACD维持空头，RSI超卖但未现明确反转信号，需等待突破确认",
+    "stop_loss": 42.5,
+    "take_profit": 44.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:25:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑42.71附近反弹，但整体仍处下跌趋势。K5阳线显示短期支撑有效，但MA均线空头排列，MACD空头，RSI偏弱，需等待更明确反转信号",
+    "stop_loss": 42.5,
+    "take_profit": 44.2,
+    "confidence": "LOW"
+  },
+  "2025-11-07T00:30:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑42.71附近震荡，K5阴线显示反弹乏力，MA空头排列，MACD空头，RSI偏弱但未超卖，需等待明确反转信号",
+    "stop_loss": 42.5,
+    "take_profit": 44.2,
+    "confidence": "LOW"
+  },
+  "2025-11-07T00:35:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑42.57附近震荡，K5阴线跌破前低显示下跌动能延续，MA空头排列，MACD空头，RSI偏弱但未超卖，需等待明确反转信号确认支撑有效",
+    "stop_loss": 42.3,
+    "take_profit": 43.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:40:00": {
+    "signal": "SELL",
+    "reason": "连续阴线跌破前低，MA空头排列，MACD空头，价格接近动态支撑42.03，下跌动能延续",
+    "stop_loss": 43.1,
+    "take_profit": 42.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:45:00": {
+    "signal": "SELL",
+    "reason": "连续5根阴线下跌，价格跌破所有均线，RSI弱势但未超卖，MACD空头排列，当前价格接近动态支撑但下跌动能延续",
+    "stop_loss": 43.1,
+    "take_profit": 41.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:50:00": {
+    "signal": "HOLD",
+    "reason": "K5阳线反弹但仍在所有均线下方，价格接近动态支撑42.37，短期下跌趋势未改但出现反弹迹象，需观察能否突破43.00阻力",
+    "stop_loss": 43.2,
+    "take_profit": 41.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T00:55:00": {
+    "signal": "HOLD",
+    "reason": "三连阴后虽有K4反弹但K5立即回落，价格42.53仍低于所有均线，RSI 40.33显示弱势但未超卖，MACD空头排列，短期下跌趋势未改，等待明确突破43.00阻力或测试42.20支撑",
+    "stop_loss": 41.8,
+    "take_profit": 43.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T01:00:00": {
+    "signal": "HOLD",
+    "reason": "价格虽反弹至42.94但仍受制于所有均线下方，短期下跌趋势未改。K5阳线未能突破前高43.01，RSI 45.39仍处弱势区间，等待明确突破43.00阻力或测试42.20支撑",
+    "stop_loss": 42.2,
+    "take_profit": 43.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T01:10:00": {
+    "signal": "HOLD",
+    "reason": "价格在动态支撑42.38附近震荡，RSI偏低但未超卖，短期趋势仍下跌，等待明确突破信号",
+    "stop_loss": 42.1,
+    "take_profit": 43.5,
+    "confidence": "LOW"
+  },
+  "2025-11-07T01:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在42.39-42.99区间震荡，RSI 45.05偏中性，MACD虽多头但整体仍处下跌趋势，需等待明确突破信号",
+    "stop_loss": 42.2,
+    "take_profit": 43.63,
+    "confidence": "LOW"
+  },
+  "2025-11-07T01:20:00": {
+    "signal": "HOLD",
+    "reason": "价格跌破短期均线，RSI偏弱但未超卖，MACD多头但整体仍处下跌趋势，需等待明确突破42.20支撑或反弹信号",
+    "stop_loss": 41.8,
+    "take_profit": 43.5,
+    "confidence": "LOW"
+  },
+  "2025-11-07T01:25:00": {
+    "signal": "HOLD",
+    "reason": "价格在42.15-42.61区间震荡，虽站上MA5但仍在MA20/50下方，RSI偏弱，整体下跌趋势未改，需等待明确突破42.20支撑或反弹信号",
+    "stop_loss": 42.1,
+    "take_profit": 43.5,
+    "confidence": "LOW"
+  },
+  "2025-11-07T01:30:00": {
+    "signal": "HOLD",
+    "reason": "价格在42.15-42.98区间震荡，虽站上MA5但仍在MA20/50下方，RSI偏弱，整体下跌趋势未改，需等待明确突破42.15支撑或反弹至43.55阻力",
+    "stop_loss": 42.1,
+    "take_profit": 43.5,
+    "confidence": "LOW"
+  },
+  "2025-11-07T01:35:00": {
+    "signal": "HOLD",
+    "reason": "价格在42.15-42.98区间震荡，虽站上MA5但仍在MA20/50下方，RSI偏弱，整体下跌趋势未改，需等待明确突破42.15支撑或反弹至43.55阻力",
+    "stop_loss": 42.1,
+    "take_profit": 43.5,
+    "confidence": "LOW"
+  },
+  "2025-11-07T01:40:00": {
+    "signal": "BUY",
+    "reason": "价格强势突破MA5(42.72)和MA20(42.87)，K5大阳线确认短期上涨动能，MACD转多且RSI中性偏强，目标动态阻力43.43",
+    "stop_loss": 42.31,
+    "take_profit": 43.43,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T01:45:00": {
+    "signal": "HOLD",
+    "reason": "价格已接近动态阻力43.55和静态阻力43.82，K5大阳线后需观察能否有效突破。短期上涨动能仍在但面临关键阻力区域，建议持有现有仓位等待突破确认",
+    "stop_loss": 42.8,
+    "take_profit": 43.9,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T01:50:00": {
+    "signal": "HOLD",
+    "reason": "价格已突破前期动态阻力43.72，现接近关键静态阻力44.00。连续5根阳线显示强势，但RSI达66.62接近超买，布林位置114.75%显示价格已突破上轨。等待44.00阻力位突破确认后再入场",
+    "stop_loss": 42.8,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T01:55:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.00附近受阻回落，K5收阴显示短期调整压力。RSI 66.39接近超买，布林位置98.16%显示价格接近上轨，需等待明确突破信号",
+    "stop_loss": 42.5,
+    "take_profit": 44.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:00:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.00附近受阻回落，连续两根阴线显示短期调整压力。RSI 56.68中性偏多但布林位置75.09%偏高，需等待明确突破信号或回调确认",
+    "stop_loss": 42.8,
+    "take_profit": 44.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:05:00": {
+    "signal": "SELL",
+    "reason": "连续三根阴线跌破MA5和MA50，价格接近动态支撑42.07，短期下跌趋势确认，RSI中性但布林位置偏中，空头动能增强",
+    "stop_loss": 43.5,
+    "take_profit": 42.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:10:00": {
+    "signal": "HOLD",
+    "reason": "价格在43.20附近震荡，短期虽有反弹但受制于MA50(43.74)和静态阻力44.00，中期下跌趋势未改。当前持仓为short，建议等待更明确突破信号",
+    "stop_loss": 44.1,
+    "take_profit": 42.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在43.30附近震荡，短期虽有反弹但受制于MA50(43.73)和静态阻力44.00，中期下跌趋势未改。K4-K5阳线反弹力度有限，未能突破关键阻力位",
+    "stop_loss": 42.09,
+    "take_profit": 43.91,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:20:00": {
+    "signal": "BUY",
+    "reason": "连续三根阳线强势反弹，K5突破MA50(43.73)并接近静态阻力44.00，RSI 62.43显示动能充足，短期上涨趋势确立",
+    "stop_loss": 42.8,
+    "take_profit": 44.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:25:00": {
+    "signal": "HOLD",
+    "reason": "价格已接近关键阻力44.05，连续5根K线上涨后存在回调风险，但整体趋势仍向上，建议持有现有仓位等待突破确认",
+    "stop_loss": 42.15,
+    "take_profit": 44.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:30:00": {
+    "signal": "HOLD",
+    "reason": "连续5根阳线强势上涨，RSI超买(71.88)，价格接近关键阻力44.16，短期回调风险增加但整体趋势仍向上，等待突破确认",
+    "stop_loss": 43.3,
+    "take_profit": 44.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:35:00": {
+    "signal": "HOLD",
+    "reason": "连续5根阳线强势上涨，RSI超买(72.5)，价格接近关键阻力44.39，布林位置96.75%显示极度超买，短期回调风险高但整体趋势仍向上，等待突破确认或回调机会",
+    "stop_loss": 43.5,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:40:00": {
+    "signal": "HOLD",
+    "reason": "连续5根阳线后出现首根阴线回调，价格接近关键阻力44.39，RSI 69.34仍处高位但较前值72.5有所缓解，布林位置87.1%显示仍超买，短期需观察回调深度或突破确认",
+    "stop_loss": 43.5,
+    "take_profit": 44.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:45:00": {
+    "signal": "HOLD",
+    "reason": "连续三阳后出现双阴回调，价格从阻力44.39回落至44.05，RSI 67.22仍处高位但未超买，短期需观察回调是否结束或继续向支撑42.15调整",
+    "stop_loss": 42.15,
+    "take_profit": 44.6,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:50:00": {
+    "signal": "BUY",
+    "reason": "强势上涨趋势中回调至MA5附近，RSI 61.84健康，MACD多头排列，接近动态支撑42.26，短期调整或结束",
+    "stop_loss": 42.15,
+    "take_profit": 44.66,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T02:55:00": {
+    "signal": "BUY",
+    "reason": "连续四根阴线回调后接近MA20(43.50)支撑，RSI中性49.54无超买，MACD仍为多头排列，中期上涨趋势未破，当前价格43.67接近动态支撑42.33，短期调整或结束",
+    "stop_loss": 42.1,
+    "take_profit": 44.6,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:00:00": {
+    "signal": "BUY",
+    "reason": "连续四阴后出现强势阳线反弹，收盘突破MA5(44.00)，RSI中性51.03无超买压力，MACD多头排列维持，中期上涨趋势完好，短期调整结束信号明确",
+    "stop_loss": 43.5,
+    "take_profit": 44.65,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:05:00": {
+    "signal": "BUY",
+    "reason": "连续三阴后出现强势阳线反弹，K4涨幅+0.79%确认短期调整结束，最新价格44.12站稳MA5(43.98)上方，MACD多头排列维持，中期上涨趋势完好，布林位置73.29%显示仍有上行空间",
+    "stop_loss": 43.6,
+    "take_profit": 44.6,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:10:00": {
+    "signal": "HOLD",
+    "reason": "连续三根阳线确认短期上涨趋势，价格站稳MA5上方，MACD多头排列。但当前价格接近静态阻力44.39，布林位置79.16%显示超买风险，建议持有现有long仓位等待突破确认",
+    "stop_loss": 43.8,
+    "take_profit": 44.65,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在静态阻力44.39下方震荡，K5阴线显示短期调整压力，但整体趋势仍向上，MA多头排列支撑，等待明确突破信号",
+    "stop_loss": 43.02,
+    "take_profit": 44.59,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:20:00": {
+    "signal": "HOLD",
+    "reason": "价格在静态阻力44.39下方震荡整理，K5阳线收复K4阴线失地显示多头仍占优，但需等待明确突破信号确认趋势延续",
+    "stop_loss": 43.1,
+    "take_profit": 44.61,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:25:00": {
+    "signal": "BUY",
+    "reason": "价格强势突破静态阻力44.66，K5大阳线确认多头动能，RSI虽偏高但趋势延续，MACD金叉支撑上涨",
+    "stop_loss": 43.8,
+    "take_profit": 45.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-07T03:30:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70附近震荡，K5阴线显示短期获利了结压力，但整体趋势仍向上，MA多头排列支撑，等待明确突破信号",
+    "stop_loss": 43.8,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:35:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70附近震荡，连续两根阴线显示短期获利了结压力，但MA多头排列和整体上涨趋势未变，等待明确突破信号",
+    "stop_loss": 43.8,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:40:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70下方震荡整理，连续三根阴线显示短期获利了结压力，但MA多头排列和整体上涨趋势未变，等待明确突破信号",
+    "stop_loss": 43.8,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:45:00": {
+    "signal": "HOLD",
+    "reason": "价格连续5根阴线回调至44.17，接近MA5支撑44.45但未跌破，短期获利了结压力明显。整体趋势仍为强势上涨，MA多头排列未破坏，等待价格在44.70阻力位附近明确突破信号",
+    "stop_loss": 43.3,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:50:00": {
+    "signal": "BUY",
+    "reason": "连续5根阴线回调至MA5支撑区域，价格在44.16接近动态支撑43.51，RSI中性48.65提供反弹空间。整体趋势仍为强势上涨，MA多头排列完好，回调为买入机会",
+    "stop_loss": 43.4,
+    "take_profit": 44.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T03:55:00": {
+    "signal": "BUY",
+    "reason": "连续5根阴线回调后出现强势阳线反弹，价格突破MA5(44.35)并接近前高，RSI中性偏强，整体趋势保持强势上涨，回调结束信号明确",
+    "stop_loss": 43.9,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:00:00": {
+    "signal": "HOLD",
+    "reason": "价格在阻力44.70下方震荡，MACD空头但整体趋势仍强，等待明确突破信号",
+    "stop_loss": 43.74,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:05:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70下方震荡，MACD空头但整体趋势仍强，K线显示多空拉锯，等待明确突破信号",
+    "stop_loss": 43.55,
+    "take_profit": 45.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:10:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70下方震荡，MACD空头但整体趋势仍强，K线显示多空拉锯，等待明确突破信号",
+    "stop_loss": 43.8,
+    "take_profit": 44.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70下方震荡，MACD空头但整体趋势仍强，K线显示多空拉锯，等待明确突破信号",
+    "stop_loss": 43.8,
+    "take_profit": 44.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:20:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力44.70下方震荡整理，MACD空头但整体趋势仍强，K线显示多空拉锯，等待明确突破信号",
+    "stop_loss": 43.55,
+    "take_profit": 44.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:25:00": {
+    "signal": "HOLD",
+    "reason": "价格跌破短期均线支撑，MACD空头排列，但接近布林下轨和静态支撑43.55，短期下跌动能释放中，等待明确止跌信号",
+    "stop_loss": 43.45,
+    "take_profit": 44.65,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:30:00": {
+    "signal": "HOLD",
+    "reason": "价格反弹至44.16但仍受制于MA5(44.22)和MA20(44.27)压力，MACD空头排列未改，短期下跌趋势未确认结束，等待突破44.30或回测43.80支撑确认方向",
+    "stop_loss": 43.5,
+    "take_profit": 44.65,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:35:00": {
+    "signal": "HOLD",
+    "reason": "价格在43.88-44.30区间震荡，MACD空头排列未改，短期下跌趋势未确认结束，等待突破44.30阻力或回测43.80支撑确认方向",
+    "stop_loss": 43.6,
+    "take_profit": 44.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:40:00": {
+    "signal": "HOLD",
+    "reason": "价格跌破43.80支撑但未确认有效突破，MACD空头排列持续，短期下跌趋势未结束，等待更明确方向信号",
+    "stop_loss": 43.5,
+    "take_profit": 44.3,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T04:45:00": {
+    "signal": "SELL",
+    "reason": "连续5根K线4阴1阳，价格跌破所有均线支撑，RSI超卖但趋势强劲下跌，MACD空头排列持续，当前价格接近静态支撑43.28，预期破位下行",
+    "stop_loss": 43.85,
+    "take_profit": 42.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-07T04:50:00": {
+    "signal": "SELL",
+    "reason": "连续5根K线4阴1阳，价格跌破所有均线支撑，RSI超卖但趋势强劲下跌，MACD空头排列持续，当前价格接近静态支撑43.23，预期破位下行",
+    "stop_loss": 44.0,
+    "take_profit": 42.8,
+    "confidence": "HIGH"
+  },
+  "2025-11-07T04:55:00": {
+    "signal": "SELL",
+    "reason": "连续5根阴线强势下跌，价格跌破所有均线支撑，MACD空头排列，RSI虽超卖但趋势强劲，当前价格接近静态支撑42.84，预期破位下行",
+    "stop_loss": 43.5,
+    "take_profit": 42.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-07T22:30:00": {
+    "signal": "SELL",
+    "reason": "连续5根阴线强势下跌，价格跌破所有均线支撑，MACD空头排列，RSI超卖但趋势强劲，当前价格接近静态支撑40.69，预期破位下行",
+    "stop_loss": 41.5,
+    "take_profit": 39.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-07T22:35:00": {
+    "signal": "SELL",
+    "reason": "连续5根阴线强势下跌，价格跌破所有均线支撑，MACD空头排列，RSI深度超卖但趋势强劲，当前价格接近静态支撑38.89，预期破位下行",
+    "stop_loss": 40.9,
+    "take_profit": 36.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-07T22:40:00": {
+    "signal": "HOLD",
+    "reason": "K5阳线反弹但仍在动态支撑40.27附近，RSI超卖但趋势仍为强势下跌，需观察是否有效突破动态阻力或跌破静态支撑",
+    "stop_loss": 41.5,
+    "take_profit": 38.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T22:45:00": {
+    "signal": "HOLD",
+    "reason": "价格在动态支撑39.72附近震荡，RSI超卖但趋势仍为强势下跌，K5未能延续反弹，需等待明确突破信号",
+    "stop_loss": 38.8,
+    "take_profit": 41.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T22:50:00": {
+    "signal": "HOLD",
+    "reason": "价格在动态支撑39.37附近震荡，RSI超卖但MACD空头排列，短期趋势仍为强势下跌，K5反弹未能突破前高，需等待明确反转信号",
+    "stop_loss": 38.8,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T22:55:00": {
+    "signal": "HOLD",
+    "reason": "价格反弹至41.15但仍受制于MA20/50阻力，MACD空头排列未改，短期趋势仍为下跌，需等待突破确认",
+    "stop_loss": 38.8,
+    "take_profit": 42.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:00:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.89附近震荡，K5大阴线跌破前四根K线涨幅，但RSI已接近超卖(27.38)，短期下跌动能仍在但接近支撑位，等待明确方向确认",
+    "stop_loss": 38.5,
+    "take_profit": 41.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:05:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.89附近震荡，K5阳线反弹但未能突破前阴线高点，RSI超卖但MACD仍为空头排列，等待明确突破信号",
+    "stop_loss": 38.5,
+    "take_profit": 41.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:10:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.89附近震荡，K5阳线反弹但未能突破前阴线高点41.11，RSI超卖但MACD仍为空头排列，等待明确突破信号",
+    "stop_loss": 38.3,
+    "take_profit": 41.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.89附近震荡，K5阴线确认短期弱势，RSI超卖但MACD仍为空头排列，等待明确突破信号",
+    "stop_loss": 38.5,
+    "take_profit": 41.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:20:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.89附近震荡，K5阴线确认短期弱势，RSI超卖但MACD仍为空头排列，等待明确突破信号",
+    "stop_loss": 38.5,
+    "take_profit": 41.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:25:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.89附近震荡，连续阴线确认短期弱势，RSI超卖但MACD仍为空头排列，等待明确突破信号",
+    "stop_loss": 38.5,
+    "take_profit": 41.0,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:30:00": {
+    "signal": "HOLD",
+    "reason": "价格接近关键支撑38.89，连续阴线显示弱势，RSI超卖但MACD仍为空头排列，等待明确突破信号",
+    "stop_loss": 38.5,
+    "take_profit": 40.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:35:00": {
+    "signal": "HOLD",
+    "reason": "价格触及关键支撑38.72，连续5根阴线显示强烈下跌动能，RSI超卖但MACD空头排列未改善，等待明确反转信号",
+    "stop_loss": 38.4,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:40:00": {
+    "signal": "HOLD",
+    "reason": "价格触及关键支撑38.28，连续5根阴线显示强烈下跌动能，RSI超卖但MACD空头排列未改善，等待明确反转信号确认支撑有效性",
+    "stop_loss": 37.8,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:45:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.22附近震荡，连续4根阴线后出现小阳线但反弹乏力，RSI超卖但MACD空头排列未改善，需等待明确反转信号确认支撑有效性",
+    "stop_loss": 37.8,
+    "take_profit": 39.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:50:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.22附近震荡，连续下跌后出现小阳线但反弹力度不足，RSI超卖但MACD空头排列未改善，需等待明确反转信号确认支撑有效性",
+    "stop_loss": 37.8,
+    "take_profit": 39.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-07T23:55:00": {
+    "signal": "HOLD",
+    "reason": "价格触及关键支撑38.20但反弹乏力，RSI超卖但MACD空头排列未改善，需等待明确反转信号确认支撑有效性",
+    "stop_loss": 37.8,
+    "take_profit": 39.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:00:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑38.07附近震荡，RSI超卖但MACD空头排列未改善，反弹乏力缺乏明确反转信号",
+    "stop_loss": 37.8,
+    "take_profit": 39.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:05:00": {
+    "signal": "HOLD",
+    "reason": "价格触及关键支撑37.91但未有效突破，RSI极度超卖(12.06)但MACD空头排列未改善，短期趋势仍向下，等待明确反转信号",
+    "stop_loss": 37.4,
+    "take_profit": 39.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:10:00": {
+    "signal": "HOLD",
+    "reason": "价格触及关键支撑37.45但未有效突破，RSI极度超卖(15.00)显示反弹可能，但MACD空头排列未改善且短期趋势仍向下，等待明确反转信号确认",
+    "stop_loss": 37.2,
+    "take_profit": 38.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:15:00": {
+    "signal": "BUY",
+    "reason": "价格在关键支撑37.40附近出现反弹阳线，RSI极度超卖(20.07)显示反弹需求，K5阳线收复K4大部分跌幅，短期存在技术性反弹机会",
+    "stop_loss": 37.3,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:20:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近反弹，RSI超卖(22.94)显示反弹需求，但整体仍处下跌趋势，MA空头排列压制明显，等待更明确突破信号",
+    "stop_loss": 37.3,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:25:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近震荡，RSI超卖(23.14)显示反弹需求，但MA空头排列压制明显，K线形态显示多空拉锯，等待更明确突破信号",
+    "stop_loss": 37.2,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:30:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近震荡，RSI超卖(29.29)显示反弹需求，但MA空头排列压制明显，K线多空拉锯未形成明确方向突破",
+    "stop_loss": 37.3,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:35:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近震荡，RSI超卖(26.35)显示反弹需求，但MA空头排列压制明显，K线多空拉锯未形成明确方向突破",
+    "stop_loss": 37.2,
+    "take_profit": 38.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:40:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近震荡，K线多空拉锯明显，RSI超卖但MA空头排列压制，未形成明确突破信号",
+    "stop_loss": 37.2,
+    "take_profit": 38.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:45:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近震荡，K线多空拉锯明显，RSI超卖但MA空头排列压制，未形成明确突破信号",
+    "stop_loss": 37.2,
+    "take_profit": 38.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:50:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.40附近震荡，K线多空拉锯但未形成明确突破信号，MA空头排列压制明显，RSI超卖但趋势仍偏空",
+    "stop_loss": 37.2,
+    "take_profit": 38.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T00:55:00": {
+    "signal": "HOLD",
+    "reason": "价格接近关键支撑37.05但未确认突破，连续阴线显示空头压力仍存，RSI超卖但趋势未转，等待明确反转信号",
+    "stop_loss": 36.8,
+    "take_profit": 38.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:00:00": {
+    "signal": "HOLD",
+    "reason": "价格连续5根阴线下跌至关键支撑37.05附近，RSI超卖但趋势未转，MACD虽多头但动能不足，等待明确反转信号确认支撑有效性",
+    "stop_loss": 36.8,
+    "take_profit": 38.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:05:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键支撑37.05附近出现单根阳线反弹，但连续阴线下跌趋势未破，RSI仍处超卖区域但未确认反转，MACD多头但动能不足，需等待更多确认信号",
+    "stop_loss": 36.9,
+    "take_profit": 38.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:10:00": {
+    "signal": "HOLD",
+    "reason": "价格反弹至37.60但仍在MA(20)37.91下方，连续下跌趋势未破，RSI39.7仍偏弱，需等待突破38.76动态阻力确认反转",
+    "stop_loss": 37.05,
+    "take_profit": 38.76,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:15:00": {
+    "signal": "HOLD",
+    "reason": "价格反弹至37.84但仍受MA(20)37.86压制，MACD虽转多但整体仍处下跌趋势，需突破38.62动态阻力确认反转",
+    "stop_loss": 37.05,
+    "take_profit": 38.62,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:20:00": {
+    "signal": "BUY",
+    "reason": "连续5根阳线强势突破MA20阻力，MACD金叉转多，短期上涨动能强劲，突破动态阻力38.61",
+    "stop_loss": 37.6,
+    "take_profit": 39.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:25:00": {
+    "signal": "HOLD",
+    "reason": "连续5根阳线强势上涨后已接近静态阻力38.78，当前价格38.40距离阻力仅1%，短期涨幅过大需整理蓄力，但趋势仍偏多",
+    "stop_loss": 37.8,
+    "take_profit": 38.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:35:00": {
+    "signal": "HOLD",
+    "reason": "连续4阳后出现回调阴线，价格在MA5(38.31)附近震荡，接近动态阻力38.70但未突破关键阻力38.84，短期上涨动能减弱，建议等待明确突破信号",
+    "stop_loss": 37.05,
+    "take_profit": 38.84,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:40:00": {
+    "signal": "HOLD",
+    "reason": "价格在MA5(38.31)附近震荡，连续上涨后出现回调，接近动态阻力38.70但未突破关键阻力38.84，短期动能减弱需等待明确方向",
+    "stop_loss": 37.05,
+    "take_profit": 38.84,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:45:00": {
+    "signal": "HOLD",
+    "reason": "价格跌破MA5(38.34)至37.95，连续三根阴线回调，但仍在MA20(37.88)上方，短期上涨动能减弱，等待明确方向突破",
+    "stop_loss": 37.7,
+    "take_profit": 38.6,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:50:00": {
+    "signal": "HOLD",
+    "reason": "价格在MA20(37.92)上方获得支撑反弹，但受阻于MA5(38.30)附近，短期趋势不明。MACD虽多头但力度有限，需等待突破38.30确认上涨或跌破37.95确认下跌",
+    "stop_loss": 37.85,
+    "take_profit": 38.7,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T01:55:00": {
+    "signal": "BUY",
+    "reason": "连续两根阳线突破MA5(38.26)，价格站上所有短期均线，RSI(63.13)显示多头动能，MACD金叉向上，短期上涨趋势确立",
+    "stop_loss": 37.95,
+    "take_profit": 38.84,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:00:00": {
+    "signal": "HOLD",
+    "reason": "价格在38.49接近静态阻力38.84，连续三根阳线后动能减弱，K5涨幅仅0.04%显示买盘乏力，RSI(64.77)接近超买但未突破关键阻力，建议持有现有LONG仓位等待明确突破信号",
+    "stop_loss": 37.8,
+    "take_profit": 38.84,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:05:00": {
+    "signal": "HOLD",
+    "reason": "价格连续5根阳线后接近静态阻力38.84，RSI(72.18)已进入超买区域，MACD虽转多但动能减弱，K4涨幅仅0.04%显示买盘乏力，建议等待明确突破信号",
+    "stop_loss": 37.05,
+    "take_profit": 38.84,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:10:00": {
+    "signal": "HOLD",
+    "reason": "价格触及静态阻力39.16，RSI(79.18)严重超买，布林位置101.85%显示极度超买，虽连续阳线但需等待突破确认",
+    "stop_loss": 38.2,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:15:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力39.22附近受阻回落，RSI(74.6)仍处超买区域，布林位置89.13%显示高位压力，需等待明确突破信号",
+    "stop_loss": 38.5,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:20:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力39.22附近受阻，RSI(73.88)超买，布林位置91.15%显示高位压力，需等待明确突破信号确认趋势延续",
+    "stop_loss": 38.7,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:25:00": {
+    "signal": "HOLD",
+    "reason": "价格接近关键阻力39.42，RSI(73.48)超买，布林位置92.29%显示高位压力，需等待明确突破确认趋势延续",
+    "stop_loss": 38.8,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:30:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力39.44附近震荡，RSI(68.31)仍处高位但未超买，布林位置85.54%显示上行压力，需等待明确突破或回调确认方向",
+    "stop_loss": 38.8,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:35:00": {
+    "signal": "BUY",
+    "reason": "价格突破关键阻力39.50，连续阳线显示多头动能强劲，MA多头排列，MACD金叉确认，短期趋势明确向上",
+    "stop_loss": 38.8,
+    "take_profit": 40.2,
+    "confidence": "HIGH"
+  },
+  "2025-11-08T02:40:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力39.50附近受阻回落，连续K线显示多空拉锯，但整体趋势仍向上，MA多头排列支撑，建议持有等待明确突破信号",
+    "stop_loss": 38.8,
+    "take_profit": 40.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:45:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力39.50受阻后连续回调，最新K5大阴线跌破MA5，但仍在MA20/50上方，整体多头趋势未破，等待回调企稳信号",
+    "stop_loss": 37.5,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:50:00": {
+    "signal": "HOLD",
+    "reason": "价格在39.50阻力受阻后连续回调，最新跌破MA5但仍在MA20/50上方，多头趋势未破，等待回调企稳信号",
+    "stop_loss": 37.5,
+    "take_profit": 39.5,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T02:55:00": {
+    "signal": "BUY",
+    "reason": "价格在MA20/50上方获得支撑，K5强势反弹收复前两根阴线跌幅，RSI虽偏高但MACD金叉确认多头趋势，突破39.50阻力可期",
+    "stop_loss": 38.7,
+    "take_profit": 40.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:00:00": {
+    "signal": "HOLD",
+    "reason": "价格在39.50阻力位下方震荡，K5阴线显示短期动能减弱，但整体趋势仍偏多，等待明确突破信号",
+    "stop_loss": 38.8,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:10:00": {
+    "signal": "BUY",
+    "reason": "短期趋势上涨，均线多头排列，RSI健康，价格突破近期高点，MACD金叉确认",
+    "stop_loss": 38.8,
+    "take_profit": 39.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:15:00": {
+    "signal": "HOLD",
+    "reason": "价格回调至39.15但仍处均线多头排列之上，短期趋势未破坏。K5阴线为正常调整，RSI健康，等待突破39.50阻力确认新上涨",
+    "stop_loss": 38.05,
+    "take_profit": 39.84,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:20:00": {
+    "signal": "BUY",
+    "reason": "K5强势阳线突破近期高点，收盘39.47接近阻力39.51，MACD金叉确认，均线多头排列支撑强劲，短期上涨趋势延续",
+    "stop_loss": 38.8,
+    "take_profit": 40.2,
+    "confidence": "HIGH"
+  },
+  "2025-11-08T03:25:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力39.51附近震荡，K5阴线显示短期获利了结压力，但均线多头排列和MACD金叉支撑中期上涨趋势，等待明确突破信号",
+    "stop_loss": 38.35,
+    "take_profit": 40.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:30:00": {
+    "signal": "BUY",
+    "reason": "价格强势突破关键阻力39.89，5分钟K线连续收阳，RSI 63.51显示仍有上涨空间，MACD金叉确认多头趋势，均线多头排列支撑强劲",
+    "stop_loss": 39.3,
+    "take_profit": 40.5,
+    "confidence": "HIGH"
+  },
+  "2025-11-08T03:35:00": {
+    "signal": "HOLD",
+    "reason": "价格已接近关键阻力40.17，当前40.09距离阻力仅0.2%，布林位置108.18%显示超买，短期需观察能否有效突破",
+    "stop_loss": 39.5,
+    "take_profit": 40.3,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:40:00": {
+    "signal": "HOLD",
+    "reason": "价格已突破动态阻力40.18，但接近关键静态阻力40.62，RSI超买70.35，布林位置119.42%显示极度超买，等待回调或有效突破确认",
+    "stop_loss": 39.8,
+    "take_profit": 40.8,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:45:00": {
+    "signal": "HOLD",
+    "reason": "价格在关键阻力40.62下方震荡，RSI 64.47仍偏高，布林位置101.17%显示超买，等待有效突破或回调确认",
+    "stop_loss": 39.8,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:50:00": {
+    "signal": "HOLD",
+    "reason": "价格接近关键阻力40.62，RSI超买70.11，布林位置102.18%显示极度超买，等待突破确认或回调",
+    "stop_loss": 39.8,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T03:55:00": {
+    "signal": "HOLD",
+    "reason": "价格触及关键阻力40.72，RSI超买82.96，布林位置100.31%显示极度超买，等待突破确认或回调",
+    "stop_loss": 39.8,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:00:00": {
+    "signal": "HOLD",
+    "reason": "价格接近关键阻力40.89，RSI超买84.94，布林位置93.90%显示超买，但短期趋势仍向上，等待突破确认或回调",
+    "stop_loss": 40.2,
+    "take_profit": 41.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:05:00": {
+    "signal": "HOLD",
+    "reason": "价格接近关键阻力40.89，RSI超买82.05，布林位置88.39%显示超买，但短期趋势仍向上，等待突破确认或回调",
+    "stop_loss": 40.3,
+    "take_profit": 41.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:10:00": {
+    "signal": "HOLD",
+    "reason": "价格连续上涨后出现回调，RSI超买80.46，布林位置81.61%仍偏高，接近关键阻力40.89，等待回调确认或突破信号",
+    "stop_loss": 40.2,
+    "take_profit": 41.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:15:00": {
+    "signal": "HOLD",
+    "reason": "短期回调但中期趋势仍向上，价格接近关键阻力40.89，RSI超买72.14，等待回调至支撑或明确突破信号",
+    "stop_loss": 39.8,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:20:00": {
+    "signal": "HOLD",
+    "reason": "连续四根阴线回调，价格从40.73跌至40.09，已跌破MA5(40.51)，但仍在MA20(39.87)之上。短期回调但中期上涨趋势未破，等待价格接近动态支撑38.53或重新站稳MA5再考虑买入",
+    "stop_loss": 38.4,
+    "take_profit": 41.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:25:00": {
+    "signal": "HOLD",
+    "reason": "连续五根阴线回调，价格跌破MA5但仍在MA20之上。短期回调但中期上涨趋势未破，等待价格接近动态支撑38.67或重新站稳MA5再考虑买入",
+    "stop_loss": 38.5,
+    "take_profit": 41.0,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:30:00": {
+    "signal": "BUY",
+    "reason": "连续四阴后出现强势阳线反弹，收盘突破MA5(40.33)，RSI(67.59)显示动能恢复，短期回调结束迹象明显",
+    "stop_loss": 39.8,
+    "take_profit": 41.1,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:35:00": {
+    "signal": "HOLD",
+    "reason": "连续两阳反弹但接近静态阻力40.89，RSI超买(70.65)且MACD空头，等待突破确认或回调机会",
+    "stop_loss": 39.8,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:40:00": {
+    "signal": "HOLD",
+    "reason": "连续三阳反弹接近静态阻力40.89，RSI(67.18)接近超买但未突破，MACD仍为空头，等待阻力位突破确认或回调至支撑位机会",
+    "stop_loss": 39.08,
+    "take_profit": 41.27,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:45:00": {
+    "signal": "HOLD",
+    "reason": "连续三阳后出现大幅回调阴线，价格从静态阻力40.89附近回落至40.26，MACD仍为空头排列，需等待回调至动态支撑39.17附近或突破阻力确认",
+    "stop_loss": 39.0,
+    "take_profit": 41.2,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:50:00": {
+    "signal": "BUY",
+    "reason": "价格强势反弹突破前高，三连阳后仅一根回调阴线即被收复，最新K线涨幅1.34%显示多头动能强劲，价格接近静态阻力但趋势明确",
+    "stop_loss": 39.8,
+    "take_profit": 41.25,
+    "confidence": "MEDIUM"
+  },
+  "2025-11-08T04:55:00": {
+    "signal": "HOLD",
+    "reason": "价格触及静态阻力41.74，短期涨幅过大，RSI接近超买区域68.77，需观察能否有效突破阻力",
+    "stop_loss": 40.26,
+    "take_profit": 42.5,
+    "confidence": "MEDIUM"
+  }
+}

@@ -45,6 +45,7 @@ def plot_supertrend(
     equity_curve: pd.Series | None,
     initial_capital: float | None,
     output_path: Path,
+    title: str | None = None,
 ) -> Path:
     """绘制策略资金曲线与买入持有基准。"""
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,7 +96,7 @@ def plot_supertrend(
             fontsize=14,
         )
 
-    ax.set_title("超级趋势策略资金曲线")
+    ax.set_title(title or "超级趋势策略资金曲线")
     ax.set_xlabel("时间")
     ax.set_ylabel("资金")
     if curves_plotted > 0:
