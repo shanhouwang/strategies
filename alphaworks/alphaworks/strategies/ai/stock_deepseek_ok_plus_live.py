@@ -7,8 +7,9 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta, time as dt_time
 from typing import Any, Dict, List
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -44,6 +45,13 @@ def _env_float(key: str, default: float) -> float:
         return default
 
 
+def _env_str(key: str, default: str) -> str:
+    value = os.getenv(key)
+    if value is None or not value.strip():
+        return default
+    return value.strip()
+
+
 TRADE_CONFIG = {
     "symbol": os.getenv("STOCK_SYMBOL", settings.symbol),
     "timeframe": os.getenv("STOCK_INTERVAL", settings.interval),
@@ -60,6 +68,13 @@ TRADE_CONFIG = {
         "trend_strength_multiplier": _env_float("TREND_STRENGTH_MULTIPLIER", 1.2),
         "account_capital": _env_float("ACCOUNT_CAPITAL", settings.initial_capital),
         "min_shares": int(os.getenv("MIN_SHARES", "1")),
+    },
+    "market_schedule": {
+        "timezone": _env_str("MARKET_TIMEZONE", "America/New_York"),
+        "regular_open": _env_str("MARKET_OPEN", "09:30"),
+        "regular_close": _env_str("MARKET_CLOSE", "16:00"),
+        "allow_pre_market": _env_bool("ALLOW_PRE_MARKET", False),
+        "allow_after_hours": _env_bool("ALLOW_AFTER_HOURS", False),
     },
 }
 
@@ -83,6 +98,80 @@ else:
 price_history: List[Dict[str, Any]] = []
 signal_history: List[Dict[str, Any]] = []
 portfolio_state: Dict[str, Any] | None = None
+
+
+def _load_market_timezone(name: str) -> ZoneInfo:
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        fallback = "America/New_York"
+        print(f"⚠️ 无法解析时区 {name}，默认 {fallback}")
+        return ZoneInfo(fallback)
+
+
+def _parse_time(value: str, default: dt_time) -> dt_time:
+    try:
+        hour, minute = value.split(":")
+        return dt_time(hour=int(hour), minute=int(minute))
+    except Exception:
+        return default
+
+
+MARKET_SCHEDULE = TRADE_CONFIG["market_schedule"]
+MARKET_TIMEZONE = _load_market_timezone(MARKET_SCHEDULE["timezone"])
+MARKET_OPEN_TIME = _parse_time(MARKET_SCHEDULE["regular_open"], dt_time(hour=9, minute=30))
+MARKET_CLOSE_TIME = _parse_time(MARKET_SCHEDULE["regular_close"], dt_time(hour=16, minute=0))
+
+
+def _describe_wait(seconds: int) -> str:
+    seconds = max(seconds, 0)
+    minutes, sec = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} 小时")
+    if minutes:
+        parts.append(f"{minutes} 分")
+    if sec and not hours:
+        parts.append(f"{sec} 秒")
+    return "".join(parts) or "片刻"
+
+
+def is_regular_trading_session(now: datetime | None = None) -> tuple[bool, str, int | None]:
+    tz = MARKET_TIMEZONE
+    localized_now = (now or datetime.now(UTC)).astimezone(tz)
+    weekday = localized_now.weekday()
+    if weekday >= 5:
+        return False, "当前为周末休市", None
+    open_dt = localized_now.replace(
+        hour=MARKET_OPEN_TIME.hour,
+        minute=MARKET_OPEN_TIME.minute,
+        second=0,
+        microsecond=0,
+    )
+    close_dt = localized_now.replace(
+        hour=MARKET_CLOSE_TIME.hour,
+        minute=MARKET_CLOSE_TIME.minute,
+        second=0,
+        microsecond=0,
+    )
+    allow_pre = MARKET_SCHEDULE["allow_pre_market"]
+    allow_after = MARKET_SCHEDULE["allow_after_hours"]
+    tz_label = getattr(tz, "key", str(tz))
+    if localized_now < open_dt:
+        if allow_pre:
+            return True, "", 0
+        wait_seconds = int((open_dt - localized_now).total_seconds())
+        return (
+            False,
+            f"尚未开盘（{MARKET_OPEN_TIME.strftime('%H:%M')} {tz_label}，约还有 {_describe_wait(wait_seconds)}）",
+            wait_seconds,
+        )
+    if localized_now >= close_dt:
+        if allow_after:
+            return True, "", 0
+        return False, f"已收盘（{MARKET_CLOSE_TIME.strftime('%H:%M')} {tz_label}），等待下一交易日", None
+    return True, "", 0
 
 try:
     trade_executor = LongbridgeTradeExecutor(
@@ -110,7 +199,7 @@ def fetch_price_dataframe(symbol: str, interval: str, points: int) -> pd.DataFra
 
     with quote_context(settings) as ctx:
         for attempt in range(max_attempts):
-            end_time = datetime.utcnow() - timedelta(days=attempt)
+            end_time = datetime.now(UTC) - timedelta(days=attempt)
             start_time = end_time - timedelta(minutes=lookback_minutes)
             try:
                 candles = fetch_candles(ctx, symbol, interval, start_time, end_time)
@@ -302,16 +391,25 @@ def calculate_intelligent_position(
     suggested_cash = max_cash * multiplier
     if available_cash is not None:
         suggested_cash = min(suggested_cash, available_cash)
-    cash_limit = None
-    if max_qty_info:
-        cash_limit = max_qty_info.get("cash")
-        if cash_limit:
-            suggested_cash = min(suggested_cash, float(cash_limit) * price)
-    final_cash = suggested_cash
     price = max(price, 1e-6)
     min_shares = max(config.get("min_shares", 1), 1)
-    shares = max(int(final_cash // price), min_shares)
-    return shares
+    shares = max(int(suggested_cash // price), min_shares)
+
+    # 如果券商返回了最大下单股数，则必须严格限制，避免出现“最多买 0 股却下单成功”的情况。
+    if max_qty_info:
+        limit_candidates: List[int] = []
+        for key in ("cash", "margin"):
+            raw_value = max_qty_info.get(key)
+            if raw_value is None:
+                continue
+            try:
+                limit_candidates.append(max(int(raw_value), 0))
+            except (TypeError, ValueError):
+                continue
+        if limit_candidates:
+            max_allowed_shares = max(limit_candidates)
+            shares = min(shares, max_allowed_shares)
+    return max(shares, 0)
 
 
 def execute_trade(signal_data: Dict[str, Any], price_data: Dict[str, Any], df_slice: pd.DataFrame) -> None:
@@ -390,7 +488,15 @@ def execute_trade(signal_data: Dict[str, Any], price_data: Dict[str, Any], df_sl
         print("（测试模式）仅记录信号，未真实下单。")
 
 
-def trading_cycle() -> None:
+def trading_cycle() -> int:
+    is_open, reason, wait_hint = is_regular_trading_session()
+    default_wait = timeframe_to_minutes(TRADE_CONFIG["timeframe"]) * 60
+    if not is_open:
+        current_us_time = datetime.now(UTC).astimezone(MARKET_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S %Z")
+        print(f"当前非交易时段（{current_us_time}）：{reason}")
+        if wait_hint and wait_hint < default_wait:
+            return max(wait_hint, 30)
+        return default_wait
     df = fetch_price_dataframe(
         TRADE_CONFIG["symbol"],
         TRADE_CONFIG["timeframe"],
@@ -404,6 +510,7 @@ def trading_cycle() -> None:
         "timestamp": df.index[-1].strftime("%Y-%m-%d %H:%M:%S"),
     }
     execute_trade(signal, price_data, df)
+    return default_wait
 
 
 def main() -> None:
@@ -411,12 +518,13 @@ def main() -> None:
     print(
         f"标的: {TRADE_CONFIG['symbol']} | 周期: {TRADE_CONFIG['timeframe']} | 测试模式: {TRADE_CONFIG['test_mode']}"
     )
+    default_wait = timeframe_to_minutes(TRADE_CONFIG["timeframe"]) * 60
     while True:
         try:
-            trading_cycle()
+            wait_seconds = trading_cycle()
         except Exception as exc:
             print(f"❌ 本轮执行异常: {exc}")
-        wait_seconds = timeframe_to_minutes(TRADE_CONFIG["timeframe"]) * 60
+            wait_seconds = default_wait
         time.sleep(wait_seconds)
 
 

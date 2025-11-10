@@ -21,7 +21,7 @@ python scripts/run_backtest.py \
   --strategy stock_deepseek_ok_plus \
   --symbol SOXL.US \
   --interval 5m \
-  --start 2025-11-06T00:00:00 \
+  --start 2025-11-07T00:00:00 \
   --end 2025-11-08T00:00:00 \
   --strategy-param analysis_window=60 \
   --strategy-param deepseek_cache=artifacts/deepseek_ok_plus_cache.json \
