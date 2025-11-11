@@ -53,15 +53,82 @@ def _env_str(key: str, default: str) -> str:
     return value.strip()
 
 
+DEFAULT_MARKET_SCHEDULES = {
+    "US": {
+        "timezone": "America/New_York",
+        "regular_open": "09:30",
+        "regular_close": "16:00",
+        "allow_pre_market": False,
+        "allow_after_hours": False,
+    },
+    "HK": {
+        "timezone": "Asia/Hong_Kong",
+        "regular_open": "09:30",
+        "regular_close": "16:00",
+        "allow_pre_market": False,
+        "allow_after_hours": False,
+    },
+    "CN": {
+        "timezone": "Asia/Shanghai",
+        "regular_open": "09:30",
+        "regular_close": "15:00",
+        "allow_pre_market": False,
+        "allow_after_hours": False,
+    },
+}
+
+
+def detect_market(symbol: str) -> str:
+    sym = (symbol or "").upper()
+    if sym.endswith(".US"):
+        return "US"
+    if sym.endswith(".HK"):
+        return "HK"
+    if sym.endswith((".SZ", ".SH", ".SS")):
+        return "CN"
+    return "US"
+
+
+def _determine_lot_size(symbol: str) -> int:
+    try:
+        with quote_context(settings) as ctx:
+            info_list = ctx.static_info([symbol])
+    except Exception as exc:
+        print(f"⚠️ 获取 {symbol} 的最小交易单位失败：{exc}，默认按 1 股处理。")
+        return 1
+    if not info_list:
+        print(f"⚠️ 未获取到 {symbol} 的静态信息，默认按 1 股处理。")
+        return 1
+    record = info_list[0]
+    raw_size = getattr(record, "lot_size", None)
+    try:
+        lot_size = int(raw_size) if raw_size is not None else 1
+    except (TypeError, ValueError):
+        lot_size = 1
+    if lot_size <= 0:
+        lot_size = 1
+    return lot_size
+
+
+SYMBOL = os.getenv("STOCK_SYMBOL", settings.symbol)
+MARKET_CODE = detect_market(SYMBOL)
+AUTO_SCHEDULE = DEFAULT_MARKET_SCHEDULES.get(MARKET_CODE, DEFAULT_MARKET_SCHEDULES["US"]).copy()
+ALLOW_SHORT_ENV = _env_bool("ALLOW_SHORT", False)
+MARKET_ALLOWS_SHORT = MARKET_CODE not in {"HK"}
+if ALLOW_SHORT_ENV and not MARKET_ALLOWS_SHORT:
+    print(f"⚠️ 标的 {SYMBOL} 所属市场 ({MARKET_CODE}) 暂不支持做空，已自动关闭做空开关。")
+ALLOW_SHORT_EFFECTIVE = ALLOW_SHORT_ENV and MARKET_ALLOWS_SHORT
+LOT_SIZE = _determine_lot_size(SYMBOL)
+
+
 TRADE_CONFIG = {
-    "symbol": os.getenv("STOCK_SYMBOL", settings.symbol),
+    "symbol": SYMBOL,
     "timeframe": os.getenv("STOCK_INTERVAL", settings.interval),
     "data_points": int(os.getenv("DATA_POINTS", "96")),
-    "allow_short": _env_bool("ALLOW_SHORT", False),
+    "allow_short": ALLOW_SHORT_EFFECTIVE,
     "test_mode": _env_bool("TEST_MODE", True),
     "position_management": {
         "enable_intelligent_position": _env_bool("ENABLE_INTELLIGENT_POSITION", True),
-        "base_cash_amount": _env_float("BASE_CASH_AMOUNT", 1_000.0),
         "max_position_ratio": _env_float("MAX_POSITION_RATIO", 0.25),
         "high_confidence_multiplier": _env_float("HIGH_CONFIDENCE_MULTIPLIER", 1.5),
         "medium_confidence_multiplier": _env_float("MEDIUM_CONFIDENCE_MULTIPLIER", 1.0),
@@ -71,11 +138,11 @@ TRADE_CONFIG = {
         "min_shares": int(os.getenv("MIN_SHARES", "1")),
     },
     "market_schedule": {
-        "timezone": _env_str("MARKET_TIMEZONE", "America/New_York"),
-        "regular_open": _env_str("MARKET_OPEN", "09:30"),
-        "regular_close": _env_str("MARKET_CLOSE", "16:00"),
-        "allow_pre_market": _env_bool("ALLOW_PRE_MARKET", False),
-        "allow_after_hours": _env_bool("ALLOW_AFTER_HOURS", False),
+        "timezone": _env_str("MARKET_TIMEZONE", AUTO_SCHEDULE["timezone"]),
+        "regular_open": _env_str("MARKET_OPEN", AUTO_SCHEDULE["regular_open"]),
+        "regular_close": _env_str("MARKET_CLOSE", AUTO_SCHEDULE["regular_close"]),
+        "allow_pre_market": _env_bool("ALLOW_PRE_MARKET", AUTO_SCHEDULE["allow_pre_market"]),
+        "allow_after_hours": _env_bool("ALLOW_AFTER_HOURS", AUTO_SCHEDULE["allow_after_hours"]),
     },
 }
 
@@ -104,8 +171,17 @@ _default_log_path = Path(__file__).resolve().parents[3] / "artifacts" / "deepsee
 DEEPSEEK_LOG_PATH = Path(os.getenv("DEEPSEEK_LOG_PATH", str(_default_log_path)))
 
 
+def _apply_lot_size_constraint(quantity: int) -> int:
+    lot = max(LOT_SIZE, 1)
+    if lot <= 1 or quantity <= 0:
+        return max(quantity, 0)
+    return (quantity // lot) * lot
+
+
 def _log_deepseek_event(kind: str, payload: str) -> None:
-    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z")
+    utc_now = datetime.now(UTC)
+    local_now = utc_now.astimezone(MARKET_TIMEZONE)
+    timestamp = local_now.strftime("%Y-%m-%d %H:%M:%S %Z")
     entry = f"[{timestamp}] {kind}\n{payload.rstrip()}\n{'-' * 60}\n"
     try:
         DEEPSEEK_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -413,8 +489,9 @@ def calculate_intelligent_position(
     if available_cash is not None:
         suggested_cash = min(suggested_cash, available_cash)
     price = max(price, 1e-6)
-    min_shares = max(config.get("min_shares", 1), 1)
+    min_shares = max(config.get("min_shares", 1), LOT_SIZE)
     shares = max(int(suggested_cash // price), min_shares)
+    shares = _apply_lot_size_constraint(shares)
 
     # 如果券商返回了最大下单股数，则必须严格限制，避免出现“最多买 0 股却下单成功”的情况。
     if max_qty_info:
@@ -430,6 +507,7 @@ def calculate_intelligent_position(
         if limit_candidates:
             max_allowed_shares = max(limit_candidates)
             shares = min(shares, max_allowed_shares)
+            shares = _apply_lot_size_constraint(shares)
     return max(shares, 0)
 
 
@@ -452,6 +530,15 @@ def execute_trade(signal_data: Dict[str, Any], price_data: Dict[str, Any], df_sl
         available_cash,
         max_qty_info,
     )
+    if signal == "BUY" and position_size <= 0:
+        if LOT_SIZE > 1:
+            print(
+                f"⚠️ 计算得到的目标仓位不足最小交易单位 {LOT_SIZE} 股，本次 BUY 信号已跳过。"
+            )
+        else:
+            print("⚠️ 计算得到的 BUY 仓位为 0，本次信号跳过。")
+        signal = "HOLD"
+        position_size = 0
     current_position = get_live_position_snapshot()
 
     def _set_position(side: str | None, size: int = 0) -> None:
@@ -539,6 +626,12 @@ def main() -> None:
     print(
         f"标的: {TRADE_CONFIG['symbol']} | 周期: {TRADE_CONFIG['timeframe']} | 测试模式: {TRADE_CONFIG['test_mode']}"
     )
+    schedule = TRADE_CONFIG["market_schedule"]
+    print(
+        f"市场: {MARKET_CODE} | 时区: {schedule['timezone']} | 常规盘: {schedule['regular_open']} - {schedule['regular_close']}"
+    )
+    if LOT_SIZE > 1:
+        print(f"最小交易单位: {LOT_SIZE} 股（下单数量会自动按手数取整）")
     default_wait = timeframe_to_minutes(TRADE_CONFIG["timeframe"]) * 60
     while True:
         try:
