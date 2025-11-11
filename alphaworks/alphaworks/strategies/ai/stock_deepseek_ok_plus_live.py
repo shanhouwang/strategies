@@ -8,6 +8,7 @@ import os
 import re
 import time
 from datetime import UTC, datetime, timedelta, time as dt_time
+from pathlib import Path
 from typing import Any, Dict, List
 from zoneinfo import ZoneInfo
 
@@ -98,6 +99,20 @@ else:
 price_history: List[Dict[str, Any]] = []
 signal_history: List[Dict[str, Any]] = []
 portfolio_state: Dict[str, Any] | None = None
+
+_default_log_path = Path(__file__).resolve().parents[3] / "artifacts" / "deepseek_live.log"
+DEEPSEEK_LOG_PATH = Path(os.getenv("DEEPSEEK_LOG_PATH", str(_default_log_path)))
+
+
+def _log_deepseek_event(kind: str, payload: str) -> None:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z")
+    entry = f"[{timestamp}] {kind}\n{payload.rstrip()}\n{'-' * 60}\n"
+    try:
+        DEEPSEEK_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with DEEPSEEK_LOG_PATH.open("a", encoding="utf-8") as log_file:
+            log_file.write(entry)
+    except Exception as exc:
+        print(f"⚠️ 写入 DeepSeek 日志失败: {exc}")
 
 
 def _load_market_timezone(name: str) -> ZoneInfo:
@@ -339,6 +354,9 @@ def analyze_with_deepseek(df_slice: pd.DataFrame) -> Dict[str, Any]:
         else "暂无历史信号"
     )
     prompt = build_prompt(df_slice, row, trend, levels, position_text, last_signal_desc)
+    print("🛰️ DeepSeek 请求内容：")
+    print(prompt)
+    _log_deepseek_event("REQUEST", prompt)
     response = deepseek_client.chat.completions.create(
         model="deepseek-chat",
         messages=[
@@ -351,6 +369,9 @@ def analyze_with_deepseek(df_slice: pd.DataFrame) -> Dict[str, Any]:
         temperature=0.35,
     )
     content = response.choices[0].message.content  # type: ignore[index]
+    print("🛰️ DeepSeek 返回：")
+    print(content)
+    _log_deepseek_event("RESPONSE", content or "")
     parsed = safe_json_parse(content or "")
     if not parsed:
         print("⚠️ 模型输出无法解析，使用保守 HOLD。")

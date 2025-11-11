@@ -132,7 +132,8 @@ class LongbridgeTradeExecutor:
         self.symbol = symbol
         self.allow_short = allow_short
         self.test_mode = test_mode
-        self.order_type = default_order_type or (OrderType.MO if OrderType else None)
+        # 默认使用限价单，避免在波动时触发未知成交价格
+        self.order_type = default_order_type or (OrderType.LO if OrderType else None)
         self.time_in_force = default_time_in_force or (
             TimeInForceType.Day if TimeInForceType else None
         )
