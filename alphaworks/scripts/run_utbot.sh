@@ -20,8 +20,6 @@ python scripts/run_backtest.py \
   --interval ${UTBOT_INTERVAL:-15m} \
   --start ${UTBOT_START:-2025-02-03T00:00:00} \
   --end ${UTBOT_END:-2025-11-14T00:00:00} \
-  --enable-short \
-  --strategy-param enable_short=1 \
   --strategy-param stc_fast=${UTBOT_STC_FAST:-26} \
   --strategy-param stc_slow=${UTBOT_STC_SLOW:-50} \
   --strategy-param stc_smooth=${UTBOT_STC_SMOOTH:-0.5} \
