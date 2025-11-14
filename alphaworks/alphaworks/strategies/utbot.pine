@@ -1,0 +1,195 @@
+//@version=6
+strategy(title = '万家灯火v2.0', overlay = true, initial_capital = 1000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100, commission_type = strategy.commission.percent, commission_value = 0.04)
+
+// 用户输入：设置止损百分比、启用开关
+stopLossPercent = input.float(4.0, title = '固定止损%', minval = 0.1, step = 0.1) // 止损百分比，默认 1%
+// 移动止盈开始点位
+moveStopProfitStartPercent = input.float(2.5, title = '移动止盈开始点位%', minval = 0.1, step = 0.1)
+profitCallbackPercent = input.float(35.0, title = '盈利回调出场%', minval = 0.1, step = 0.1)
+
+// 用户输入：策略其他参数
+EEEEEE = input(80, title = 'STC 长度')
+BBBB = input(26, title = '快速 EMA 长度')
+BBBBB = input(50, title = '慢速 EMA 长度')
+AAA = input.float(0.5, title = 'STC 平滑因子', minval = 0.01, maxval = 1)
+
+useStcFilter = input.bool(true, title = '启用 STC 过滤')
+useQqeFilter = input.bool(true, title = '启用 QQE 过滤')
+stcBullThreshold = input.float(40.0, title = 'STC 多头阈值', minval = 0, maxval = 100)
+stcBearThreshold = input.float(60.0, title = 'STC 空头阈值', minval = 0, maxval = 100)
+
+// === PRIMARY QQE SETTINGS ===
+group_primary = "Primary QQE Settings"
+rsiLengthPrimary = input.int(6, title="RSI Length", group=group_primary)
+rsiSmoothingPrimary = input.int(5, title="RSI Smoothing", group=group_primary)
+qqeFactorPrimary = input.float(3.0, title="QQE Factor", group=group_primary)
+sourcePrimary = input.source(close, title="RSI Source", group=group_primary)
+
+// === SECONDARY QQE SETTINGS ===
+group_secondary = "Secondary QQE Settings"
+rsiLengthSecondary = input.int(6, title="RSI Length", group=group_secondary)
+rsiSmoothingSecondary = input.int(5, title="RSI Smoothing", group=group_secondary)
+qqeFactorSecondary = input.float(1.61, title="QQE Factor", group=group_secondary)
+thresholdSecondary = input.float(3.0, title="Threshold", group=group_secondary)
+sourceSecondary = input.source(close, title="RSI Source", group=group_secondary)
+
+// === BOLLINGER BANDS SETTINGS ===
+group_bollinger = "Bollinger Bands Settings"
+bollingerLength = input.int(50, minval=1, title="Length", group=group_bollinger, tooltip="The length of the Bollinger Bands calculation.")
+bollingerMultiplier = input.float(0.35, step=0.1, minval=0.001, maxval=5, title="Multiplier", group=group_bollinger, tooltip="The multiplier used to calculate Bollinger Band width.")
+
+// 定义辅助函数
+AAAA(BBB, BBBB, BBBBB) =>
+    fastMA = ta.ema(BBB, BBBB)
+    slowMA = ta.ema(BBB, BBBBB)
+    fastMA - slowMA
+
+AAAAA(EEEEEE, BBBB, BBBBB) =>
+    var CCCCC = 0.0
+    var DDD = 0.0
+    var DDDDDD = 0.0
+    var EEEEE = 0.0
+    BBBBBB = AAAA(close, BBBB, BBBBB)
+    CCC = ta.lowest(BBBBBB, EEEEEE)
+    CCCC = ta.highest(BBBBBB, EEEEEE) - CCC
+    CCCCC := CCCC > 0 ? (BBBBBB - CCC) / CCCC * 100 : nz(CCCCC[1])
+    DDD := na(DDD[1]) ? CCCCC : DDD[1] + AAA * (CCCCC - DDD[1])
+    DDDD = ta.lowest(DDD, EEEEEE)
+    DDDDD = ta.highest(DDD, EEEEEE) - DDDD
+    DDDDDD := DDDDD > 0 ? (DDD - DDDD) / DDDDD * 100 : nz(DDDDDD[1])
+    EEEEE := na(EEEEE[1]) ? DDDDDD : EEEEE[1] + AAA * (DDDDDD - EEEEE[1])
+    EEEEE
+
+// 计算 STC 值
+mAAAAA = AAAAA(EEEEEE, BBBB, BBBBB)
+
+// 输入与计算指标
+a = input(2, title = '关键值（影响敏感度）')
+c = input(1, title = 'ATR 周期')
+h = input(false, title = '是否使用 HeikinAshi 蜡烛图信号')
+
+xATR = ta.atr(c)
+nLoss = a * xATR
+
+src = h ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = barmerge.lookahead_off) : close
+
+xATRTrailingStop = 0.0
+iff_1 = src > nz(xATRTrailingStop[1], 0) ? src - nLoss : src + nLoss
+iff_2 = src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), src + nLoss) : iff_1
+xATRTrailingStop := src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), src - nLoss) : iff_2
+
+ema = ta.ema(src, 1)
+above = ta.crossover(ema, xATRTrailingStop)
+below = ta.crossover(xATRTrailingStop, ema)
+
+// === FUNCTIONS ===
+// Calculate QQE Bands
+calculateQQE(rsiLength, smoothingFactor, qqeFactor, source) =>
+    wildersLength = rsiLength * 2 - 1
+    rsi = ta.rsi(source, rsiLength)
+    smoothedRsi = ta.ema(rsi, smoothingFactor)
+    atrRsi = math.abs(smoothedRsi[1] - smoothedRsi)
+    smoothedAtrRsi = ta.ema(atrRsi, wildersLength)
+    dynamicAtrRsi = smoothedAtrRsi * qqeFactor
+
+    // Initialize variables
+    longBand = 0.0
+    shortBand = 0.0
+    trendDirection = 0
+
+    // Calculate longBand, shortBand, and trendDirection
+    atrDelta = dynamicAtrRsi
+    newShortBand = smoothedRsi + atrDelta
+    newLongBand = smoothedRsi - atrDelta
+    longBand := smoothedRsi[1] > longBand[1] and smoothedRsi > longBand[1] ? math.max(longBand[1], newLongBand) : newLongBand
+    shortBand := smoothedRsi[1] < shortBand[1] and smoothedRsi < shortBand[1] ? math.min(shortBand[1], newShortBand) : newShortBand
+    longBandCross = ta.cross(longBand[1], smoothedRsi)
+    
+    if ta.cross(smoothedRsi, shortBand[1])
+        trendDirection := 1
+    else if longBandCross
+        trendDirection := -1
+    else
+        trendDirection := trendDirection[1]
+
+    // Determine the trend line
+    qqeTrendLine = trendDirection == 1 ? longBand : shortBand
+    [qqeTrendLine, smoothedRsi]
+
+// === MAIN CALCULATIONS ===
+// Calculate Primary QQE
+[primaryQQETrendLine, primaryRSI] = calculateQQE(rsiLengthPrimary, rsiSmoothingPrimary, qqeFactorPrimary, sourcePrimary)
+
+// Calculate Secondary QQE
+[secondaryQQETrendLine, secondaryRSI] = calculateQQE(rsiLengthSecondary, rsiSmoothingSecondary, qqeFactorSecondary, sourceSecondary)
+
+// Calculate Bollinger Bands for the Primary QQE Trend Line
+bollingerBasis = ta.sma(primaryQQETrendLine - 50, bollingerLength)
+bollingerDeviation = bollingerMultiplier * ta.stdev(primaryQQETrendLine - 50, bollingerLength)
+bollingerUpper = bollingerBasis + bollingerDeviation
+bollingerLower = bollingerBasis - bollingerDeviation
+
+// Color Conditions for Secondary RSI
+rsiColorSecondary = secondaryRSI - 50 > thresholdSecondary ? color.new(#707070, 20) : secondaryRSI - 50 < -thresholdSecondary ? color.new(#707070, 20) : na
+
+// === PLOTTING ===
+// Plot Primary and Secondary QQE Lines
+// plot(secondaryQQETrendLine - 50, title="Secondary QQE Trend Line", color=color.white, linewidth=2)
+// plot(secondaryRSI - 50, color=rsiColorSecondary, title="Secondary RSI Histogram", style=plot.style_columns)
+
+// Plot Signal Highlights
+// plot(secondaryRSI - 50 > thresholdSecondary and primaryRSI - 50 > bollingerUpper ? secondaryRSI - 50 : na, title="QQE Up Signal", style=plot.style_columns, color=#00c3ff)
+// plot(secondaryRSI - 50 < -thresholdSecondary and primaryRSI - 50 < bollingerLower ? secondaryRSI - 50 : na, title="QQE Down Signal", style=plot.style_columns, color=#ff0062)
+
+stcUpSignal = mAAAAA < stcBullThreshold and ta.rising(mAAAAA, 3)
+stcDownSignal = mAAAAA > stcBearThreshold and ta.falling(mAAAAA, 3)
+
+qqeUpSignal = secondaryRSI - 50 > thresholdSecondary and primaryRSI - 50 > bollingerUpper
+qqeDownSignal = secondaryRSI - 50 < -thresholdSecondary and primaryRSI - 50 < bollingerLower
+
+utUpSignal = src > xATRTrailingStop and above
+utDownSignal = src < xATRTrailingStop and below
+
+filtersDisabled = not useStcFilter and not useQqeFilter
+longFilterPass = filtersDisabled or (useStcFilter and stcUpSignal) or (useQqeFilter and qqeUpSignal)
+shortFilterPass = (useStcFilter and stcDownSignal) or (useQqeFilter and qqeDownSignal)
+
+buySignal = utUpSignal and longFilterPass
+rawSellSignal = utDownSignal or shortFilterPass
+activeSellSignal = rawSellSignal and strategy.position_size > 0
+
+plotshape(buySignal, title = '买入', text = '买', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(activeSellSignal, title = '平', text = '平', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+
+// 开仓逻辑
+if buySignal
+    strategy.entry('long', strategy.long)
+
+// 平仓逻辑：首先判断卖出信号，先执行卖出
+if activeSellSignal
+    strategy.close('long', comment = '平仓')
+
+hasOpenTrade = strategy.opentrades > 0
+entryPrice = hasOpenTrade ? strategy.opentrades.entry_price(strategy.opentrades - 1) : na
+
+// 止损与移动止盈价格
+stopLossPrice = not na(entryPrice) ? entryPrice * (1 - 0.01 * stopLossPercent) : na
+moveStopProfitStartPrice = not na(entryPrice) ? entryPrice * (1 + 0.01 * moveStopProfitStartPercent) : na
+
+var bool trailingStopSwitch = false
+var float highestCloseSinceEntry = na
+var float movingTargetPrice = na
+
+if strategy.position_size > 0 and not na(entryPrice)
+    highestCloseSinceEntry := na(highestCloseSinceEntry) ? close : math.max(highestCloseSinceEntry, close)
+    if not trailingStopSwitch and not na(moveStopProfitStartPrice) and close >= moveStopProfitStartPrice
+        trailingStopSwitch := true
+    if trailingStopSwitch
+        movingTargetPrice := entryPrice + (highestCloseSinceEntry - entryPrice) * (1 - 0.01 * profitCallbackPercent)
+else
+    trailingStopSwitch := false
+    highestCloseSinceEntry := na
+    movingTargetPrice := na
+
+if not na(stopLossPrice)
+    strategy.exit('止损或止盈', 'long', stop = trailingStopSwitch and not na(movingTargetPrice) ? movingTargetPrice : stopLossPrice)
