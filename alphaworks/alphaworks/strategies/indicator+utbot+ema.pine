@@ -1,0 +1,79 @@
+//@version=6
+indicator(title = 'UT Bot 动态EMA组合', shorttitle = 'UT Bot 动态EMA组合', overlay = true, timeframe = '')
+
+len1 = input.int(12, minval = 1, title = 'Length')
+src1 = input(close, title = 'Source')
+offset1 = input.int(title = 'Offset', defval = 0, minval = -500, maxval = 500)
+out1 = ta.ema(src1, len1)
+plot(out1, title = 'EMA12', color = color.new(#fff652, 0), offset = offset1, linewidth = 1)
+
+len2 = input.int(21, minval = 1, title = 'Length')
+src2 = input(close, title = 'Source')
+offset2 = input.int(title = 'Offset', defval = 0, minval = -500, maxval = 500)
+out2 = ta.ema(src2, len2)
+plot(out2, title = 'EMA21', color = color.new(color.red, 0), offset = offset2, linewidth = 1)
+
+len3 = input.int(55, minval = 1, title = 'Length')
+src3 = input(close, title = 'Source')
+offset3 = input.int(title = 'Offset', defval = 0, minval = -500, maxval = 500)
+out3 = ta.ema(src3, len3)
+plot(out3, title = 'EMA55', color = color.new(color.blue, 0), offset = offset3, linewidth = 1)
+
+len4 = input.int(144, minval = 1, title = 'Length')
+src4 = input(close, title = 'Source')
+offset4 = input.int(title = 'Offset', defval = 0, minval = -500, maxval = 500)
+out4 = ta.ema(src4, len4)
+plot(out4, title = 'EMA144', color = color.new(color.white, 0), offset = offset4, linewidth = 1)
+
+useEmaFilter = input.bool(true, title = '启用 EMA 趋势过滤')
+emaSlopeBars = input.int(2, minval = 1, title = 'EMA 趋势检测周期')
+emaGapPercent = input.float(0.2, minval = 0.0, title = 'EMA 最小分离%（占收盘价）')
+
+// Inputs
+a = input(2, title = 'Key Vaule. \'This changes the sensitivity\'')
+c = input(1, title = 'ATR Period')
+h = input(false, title = 'Signals from Heikin Ashi Candles')
+
+xATR = ta.atr(c)
+nLoss = a * xATR
+
+src = h ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = barmerge.lookahead_off) : close
+
+xATRTrailingStop = 0.0
+iff_1 = src > nz(xATRTrailingStop[1], 0) ? src - nLoss : src + nLoss
+iff_2 = src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), src + nLoss) : iff_1
+xATRTrailingStop := src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), src - nLoss) : iff_2
+
+pos = 0
+iff_3 = src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0) ? -1 : nz(pos[1], 0)
+pos := src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0) ? 1 : iff_3
+
+xcolor = pos == -1 ? color.red : pos == 1 ? color.green : color.blue
+
+ema = ta.ema(src, 1)
+above = ta.crossover(ema, xATRTrailingStop)
+below = ta.crossover(xATRTrailingStop, ema)
+
+buy = src > xATRTrailingStop and above
+sell = src < xATRTrailingStop and below
+
+emaGapOk = math.abs(out1 - out2) >= close * emaGapPercent * 0.01
+emaPriceAlignedLong = src > out1 and src > out2
+emaPriceAlignedShort = src < out1 and src < out2
+emaUpTrend = out1 > out2 and ta.rising(out1, emaSlopeBars) and ta.rising(out2, emaSlopeBars) and emaGapOk and emaPriceAlignedLong
+emaDownTrend = out1 < out2 and ta.falling(out1, emaSlopeBars) and ta.falling(out2, emaSlopeBars) and emaGapOk and emaPriceAlignedShort
+
+filteredBuy = buy and (not useEmaFilter or emaUpTrend)
+filteredSell = sell and (not useEmaFilter or emaDownTrend)
+
+barbuy = src > xATRTrailingStop
+barsell = src < xATRTrailingStop
+
+plotshape(filteredBuy, title = 'Buy', text = 'Buy', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(filteredSell, title = 'Sell', text = 'Sell', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+
+barcolor(barbuy and (not useEmaFilter or emaUpTrend) ? color.green : na)
+barcolor(barsell and (not useEmaFilter or emaDownTrend) ? color.red : na)
+
+alertcondition(filteredBuy, 'UT Long', 'UT Long')
+alertcondition(filteredSell, 'UT Short', 'UT Short')

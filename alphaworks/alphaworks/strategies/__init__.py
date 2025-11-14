@@ -12,6 +12,7 @@ _BUILTIN_REGISTRY: Dict[str, str] = {
     "turtle": "alphaworks.strategies.turtle.TurtleStrategy",
     "stock_deepseek_ai": "alphaworks.strategies.ai.stock_deepseek_strategy.StockDeepseekStrategy",
     "stock_deepseek_ok_plus": "alphaworks.strategies.ai.stock_deepseek_indicators_plus.StockDeepseekOkPlusStrategy",
+    "utbot": "alphaworks.strategies.utbot_strategy.UTBotStrategy",
 }
 
 

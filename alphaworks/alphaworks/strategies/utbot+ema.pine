@@ -1,0 +1,168 @@
+//@version=6
+strategy(title = 'UT Bot 动态EMA组合策略', overlay = true, initial_capital = 1000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100, commission_type = strategy.commission.percent, commission_value = 0.04)
+
+// === 风险控制输入 ===
+stopLossPercent = input.float(5.0, title = '固定止损%', minval = 0.1, step = 0.1)
+useAtrStop = input.bool(true, title = '使用 ATR 止损')
+atrStopMultiplier = input.float(2.5, title = 'ATR 止损倍数', minval = 0.1, step = 0.1)
+moveStopProfitStartPercent = input.float(3.0, title = '移动止盈开始点位%', minval = 0.1, step = 0.1)
+profitCallbackPercent = input.float(30.0, title = '盈利回调出场%', minval = 0.1, step = 0.1)
+
+// === EMA 过滤输入 ===
+emaSource = input.source(close, title = 'EMA 计算源')
+emaShortLength = input.int(12, minval = 1, title = 'EMA 快线长度')
+emaMediumLength = input.int(21, minval = 1, title = 'EMA 慢线长度')
+emaLongLength = input.int(55, minval = 1, title = 'EMA 长线长度')
+emaUltraLength = input.int(144, minval = 1, title = 'EMA 超长线长度')
+useEmaFilter = input.bool(true, title = '启用 EMA 趋势过滤')
+emaSlopeBars = input.int(2, minval = 1, title = 'EMA 趋势检测周期')
+emaGapPercent = input.float(0.2, minval = 0.0, title = 'EMA 最小分离%（占收盘价）')
+useAdxFilter = input.bool(true, title = '启用 ADX 趋势过滤')
+adxLength = input.int(14, minval = 1, title = 'ADX DI 周期')
+adxSmoothing = input.int(14, minval = 1, title = 'ADX 平滑周期')
+adxThreshold = input.float(20.0, minval = 1.0, title = 'ADX 最小值')
+
+enableShortTrading = input.bool(false, title = '启用做空交易')
+
+// === EMA 计算与绘图 ===
+emaShort = ta.ema(emaSource, emaShortLength)
+emaMedium = ta.ema(emaSource, emaMediumLength)
+emaLong = ta.ema(emaSource, emaLongLength)
+emaUltra = ta.ema(emaSource, emaUltraLength)
+
+plot(emaShort, title = 'EMA 快线', color = color.new(color.yellow, 0), linewidth = 1)
+plot(emaMedium, title = 'EMA 慢线', color = color.new(color.orange, 0), linewidth = 1)
+plot(emaLong, title = 'EMA 长线', color = color.new(color.blue, 0), linewidth = 1)
+plot(emaUltra, title = 'EMA 超长线', color = color.new(color.white, 0), linewidth = 1)
+
+a = input(2, title = '关键值（影响敏感度）')
+c = input(1, title = 'ATR 周期')
+h = input(false, title = '是否使用 HeikinAshi 蜡烛图信号')
+
+xATR = ta.atr(c)
+nLoss = a * xATR
+
+src = h ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = barmerge.lookahead_off) : close
+
+xATRTrailingStop = 0.0
+iff_1 = src > nz(xATRTrailingStop[1], 0) ? src - nLoss : src + nLoss
+iff_2 = src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), src + nLoss) : iff_1
+xATRTrailingStop := src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), src - nLoss) : iff_2
+
+ema1 = ta.ema(src, 1)
+above = ta.crossover(ema1, xATRTrailingStop)
+below = ta.crossover(xATRTrailingStop, ema1)
+
+utUpSignal = src > xATRTrailingStop and above
+utDownSignal = src < xATRTrailingStop and below
+
+emaGapOk = math.abs(emaShort - emaMedium) >= close * emaGapPercent * 0.01
+emaPriceAlignedLong = src > emaShort and src > emaMedium
+emaPriceAlignedShort = src < emaShort and src < emaMedium
+emaUpTrend = emaShort > emaMedium and ta.rising(emaShort, emaSlopeBars) and ta.rising(emaMedium, emaSlopeBars) and emaGapOk and emaPriceAlignedLong
+emaDownTrend = emaShort < emaMedium and ta.falling(emaShort, emaSlopeBars) and ta.falling(emaMedium, emaSlopeBars) and emaGapOk and emaPriceAlignedShort
+
+emaLongFilter = not useEmaFilter or emaUpTrend
+emaShortFilter = not useEmaFilter or emaDownTrend
+
+[plusDI, minusDI, adxValue] = ta.dmi(adxLength, adxSmoothing)
+adxLongFilter = not useAdxFilter or (adxValue > adxThreshold and plusDI > minusDI)
+adxShortFilter = not useAdxFilter or (adxValue > adxThreshold and minusDI > plusDI)
+
+longTrendFilter = emaLongFilter and adxLongFilter
+shortTrendFilter = emaShortFilter and adxShortFilter
+
+longEntrySignal = utUpSignal and longTrendFilter
+longExitSignal = utDownSignal
+shortEntrySignal = enableShortTrading and utDownSignal and shortTrendFilter
+shortExitSignal = (enableShortTrading or strategy.position_size < 0) and utUpSignal
+
+activeLongExit = longExitSignal and strategy.position_size > 0
+activeShortExit = shortExitSignal and strategy.position_size < 0
+
+plotshape(longEntrySignal, title = '买入', text = '买', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(shortEntrySignal, title = '做空', text = '空', style = shape.labeldown, location = location.abovebar, color = color.new(color.purple, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(activeLongExit, title = '平多', text = '平多', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(activeShortExit, title = '平空', text = '平空', style = shape.labelup, location = location.belowbar, color = color.new(color.orange, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+
+// 平仓逻辑
+if activeLongExit
+    strategy.close('long', comment = '平多')
+if activeShortExit
+    strategy.close('short', comment = '平空')
+
+// 开仓逻辑
+if longEntrySignal
+    strategy.entry('long', strategy.long)
+if shortEntrySignal
+    strategy.entry('short', strategy.short)
+
+longPosition = strategy.position_size > 0
+shortPosition = strategy.position_size < 0
+longEntryPrice = longPosition ? strategy.position_avg_price : na
+shortEntryPrice = shortPosition ? strategy.position_avg_price : na
+
+var float atrAtLongEntry = na
+var float atrAtShortEntry = na
+if longPosition
+    atrAtLongEntry := strategy.position_size[1] <= 0 ? xATR : nz(atrAtLongEntry, xATR)
+else
+    atrAtLongEntry := na
+
+if shortPosition
+    atrAtShortEntry := strategy.position_size[1] >= 0 ? xATR : nz(atrAtShortEntry, xATR)
+else
+    atrAtShortEntry := na
+
+percentStopLong = not na(longEntryPrice) ? longEntryPrice * (1 - 0.01 * stopLossPercent) : na
+atrStopLong = not na(longEntryPrice) and not na(atrAtLongEntry) ? longEntryPrice - atrAtLongEntry * atrStopMultiplier : na
+stopLossPriceLong = useAtrStop and not na(atrStopLong) ? atrStopLong : percentStopLong
+moveStopStartLong = not na(longEntryPrice) ? longEntryPrice * (1 + 0.01 * moveStopProfitStartPercent) : na
+
+var bool trailingStopSwitchLong = false
+var float highestCloseSinceEntryLong = na
+var float movingTargetPriceLong = na
+
+if longPosition and not na(longEntryPrice)
+    highestCloseSinceEntryLong := na(highestCloseSinceEntryLong) ? close : math.max(highestCloseSinceEntryLong, close)
+    if not trailingStopSwitchLong and not na(moveStopStartLong) and close >= moveStopStartLong
+        trailingStopSwitchLong := true
+    if trailingStopSwitchLong
+        movingTargetPriceLong := longEntryPrice + (highestCloseSinceEntryLong - longEntryPrice) * (1 - 0.01 * profitCallbackPercent)
+else
+    trailingStopSwitchLong := false
+    highestCloseSinceEntryLong := na
+    movingTargetPriceLong := na
+
+if longPosition and not na(stopLossPriceLong)
+    strategy.exit('止损或止盈_多', 'long', stop = trailingStopSwitchLong and not na(movingTargetPriceLong) ? movingTargetPriceLong : stopLossPriceLong)
+
+percentStopShort = not na(shortEntryPrice) ? shortEntryPrice * (1 + 0.01 * stopLossPercent) : na
+atrStopShort = not na(shortEntryPrice) and not na(atrAtShortEntry) ? shortEntryPrice + atrAtShortEntry * atrStopMultiplier : na
+stopLossPriceShort = useAtrStop and not na(atrStopShort) ? atrStopShort : percentStopShort
+moveStopStartShort = not na(shortEntryPrice) ? shortEntryPrice * (1 - 0.01 * moveStopProfitStartPercent) : na
+
+var bool trailingStopSwitchShort = false
+var float lowestCloseSinceEntryShort = na
+var float movingTargetPriceShort = na
+
+if shortPosition and not na(shortEntryPrice)
+    lowestCloseSinceEntryShort := na(lowestCloseSinceEntryShort) ? close : math.min(lowestCloseSinceEntryShort, close)
+    if not trailingStopSwitchShort and not na(moveStopStartShort) and close <= moveStopStartShort
+        trailingStopSwitchShort := true
+    if trailingStopSwitchShort
+        movingTargetPriceShort := shortEntryPrice - (shortEntryPrice - lowestCloseSinceEntryShort) * (1 - 0.01 * profitCallbackPercent)
+else
+    trailingStopSwitchShort := false
+    lowestCloseSinceEntryShort := na
+    movingTargetPriceShort := na
+
+if shortPosition and not na(stopLossPriceShort)
+    strategy.exit('止损或止盈_空', 'short', stop = trailingStopSwitchShort and not na(movingTargetPriceShort) ? movingTargetPriceShort : stopLossPriceShort)
+
+barbuy = src > xATRTrailingStop
+barsell = src < xATRTrailingStop
+barcolor(barbuy and longTrendFilter ? color.new(color.green, 60) : barsell and shortTrendFilter ? color.new(color.red, 60) : na)
+
+alertcondition(longEntrySignal, 'UT Long', 'UT Long')
+alertcondition(shortEntrySignal, 'UT Short', 'UT Short')

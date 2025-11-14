@@ -1,11 +1,13 @@
 //@version=6
-strategy(title = '万家灯火v2.0', overlay = true, initial_capital = 1000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100, commission_type = strategy.commission.percent, commission_value = 0.04)
+strategy(title = 'Alpha UT 多空引擎 v3.0', overlay = true, initial_capital = 1000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100, commission_type = strategy.commission.percent, commission_value = 0.04)
 
 // 用户输入：设置止损百分比、启用开关
-stopLossPercent = input.float(4.0, title = '固定止损%', minval = 0.1, step = 0.1) // 止损百分比，默认 1%
+stopLossPercent = input.float(5.0, title = '固定止损%', minval = 0.1, step = 0.1)
+useAtrStop = input.bool(true, title = '使用 ATR 止损')
+atrStopMultiplier = input.float(2.5, title = 'ATR 止损倍数', minval = 0.1, step = 0.1)
 // 移动止盈开始点位
-moveStopProfitStartPercent = input.float(2.5, title = '移动止盈开始点位%', minval = 0.1, step = 0.1)
-profitCallbackPercent = input.float(35.0, title = '盈利回调出场%', minval = 0.1, step = 0.1)
+moveStopProfitStartPercent = input.float(3.0, title = '移动止盈开始点位%', minval = 0.1, step = 0.1)
+profitCallbackPercent = input.float(30.0, title = '盈利回调出场%', minval = 0.1, step = 0.1)
 
 // 用户输入：策略其他参数
 EEEEEE = input(80, title = 'STC 长度')
@@ -15,8 +17,10 @@ AAA = input.float(0.5, title = 'STC 平滑因子', minval = 0.01, maxval = 1)
 
 useStcFilter = input.bool(true, title = '启用 STC 过滤')
 useQqeFilter = input.bool(true, title = '启用 QQE 过滤')
-stcBullThreshold = input.float(40.0, title = 'STC 多头阈值', minval = 0, maxval = 100)
-stcBearThreshold = input.float(60.0, title = 'STC 空头阈值', minval = 0, maxval = 100)
+filterRequireBoth = input.bool(false, title = '多头过滤需同时满足')
+enableShortTrading = input.bool(false, title = '启用做空交易')
+stcBullThreshold = input.float(30.0, title = 'STC 多头阈值', minval = 0, maxval = 100)
+stcBearThreshold = input.float(70.0, title = 'STC 空头阈值', minval = 0, maxval = 100)
 
 // === PRIMARY QQE SETTINGS ===
 group_primary = "Primary QQE Settings"
@@ -64,7 +68,7 @@ AAAAA(EEEEEE, BBBB, BBBBB) =>
 mAAAAA = AAAAA(EEEEEE, BBBB, BBBBB)
 
 // 输入与计算指标
-a = input(2, title = '关键值（影响敏感度）')
+a = input(3, title = '关键值（影响敏感度）')
 c = input(1, title = 'ATR 周期')
 h = input(false, title = '是否使用 HeikinAshi 蜡烛图信号')
 
@@ -141,8 +145,8 @@ rsiColorSecondary = secondaryRSI - 50 > thresholdSecondary ? color.new(#707070, 
 // plot(secondaryRSI - 50 > thresholdSecondary and primaryRSI - 50 > bollingerUpper ? secondaryRSI - 50 : na, title="QQE Up Signal", style=plot.style_columns, color=#00c3ff)
 // plot(secondaryRSI - 50 < -thresholdSecondary and primaryRSI - 50 < bollingerLower ? secondaryRSI - 50 : na, title="QQE Down Signal", style=plot.style_columns, color=#ff0062)
 
-stcUpSignal = mAAAAA < stcBullThreshold and ta.rising(mAAAAA, 3)
-stcDownSignal = mAAAAA > stcBearThreshold and ta.falling(mAAAAA, 3)
+stcUpSignal = ta.crossover(mAAAAA, stcBullThreshold)
+stcDownSignal = ta.crossunder(mAAAAA, stcBearThreshold)
 
 qqeUpSignal = secondaryRSI - 50 > thresholdSecondary and primaryRSI - 50 > bollingerUpper
 qqeDownSignal = secondaryRSI - 50 < -thresholdSecondary and primaryRSI - 50 < bollingerLower
@@ -151,45 +155,98 @@ utUpSignal = src > xATRTrailingStop and above
 utDownSignal = src < xATRTrailingStop and below
 
 filtersDisabled = not useStcFilter and not useQqeFilter
-longFilterPass = filtersDisabled or (useStcFilter and stcUpSignal) or (useQqeFilter and qqeUpSignal)
-shortFilterPass = (useStcFilter and stcDownSignal) or (useQqeFilter and qqeDownSignal)
+longFilterPass = filtersDisabled ? true : filterRequireBoth ? ((not useStcFilter or stcUpSignal) and (not useQqeFilter or qqeUpSignal)) : ((useStcFilter and stcUpSignal) or (useQqeFilter and qqeUpSignal))
+shortFilterPass = filtersDisabled ? true : filterRequireBoth ? ((not useStcFilter or stcDownSignal) and (not useQqeFilter or qqeDownSignal)) : ((useStcFilter and stcDownSignal) or (useQqeFilter and qqeDownSignal))
+filterEnabled = not filtersDisabled
+longFilterExit = filterEnabled and shortFilterPass
+shortFilterExit = filterEnabled and longFilterPass
 
-buySignal = utUpSignal and longFilterPass
-rawSellSignal = utDownSignal or shortFilterPass
-activeSellSignal = rawSellSignal and strategy.position_size > 0
+longEntrySignal = utUpSignal and longFilterPass
+longExitSignal = utDownSignal or longFilterExit
+shortEntrySignal = enableShortTrading and utDownSignal and shortFilterPass
+shortExitSignal = (enableShortTrading or strategy.position_size < 0) and (utUpSignal or shortFilterExit)
 
-plotshape(buySignal, title = '买入', text = '买', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny)
-plotshape(activeSellSignal, title = '平', text = '平', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+activeLongExit = longExitSignal and strategy.position_size > 0
+activeShortExit = shortExitSignal and strategy.position_size < 0
+
+plotshape(longEntrySignal, title = '买入', text = '买', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(shortEntrySignal, title = '做空', text = '空', style = shape.labeldown, location = location.abovebar, color = color.new(color.purple, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(activeLongExit, title = '平多', text = '平多', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+plotshape(activeShortExit, title = '平空', text = '平空', style = shape.labelup, location = location.belowbar, color = color.new(color.orange, 0), textcolor = color.new(color.white, 0), size = size.tiny)
+
+// 平仓逻辑
+if activeLongExit
+    strategy.close('long', comment = '平多')
+if activeShortExit
+    strategy.close('short', comment = '平空')
 
 // 开仓逻辑
-if buySignal
+if longEntrySignal
     strategy.entry('long', strategy.long)
+if shortEntrySignal
+    strategy.entry('short', strategy.short)
+longPosition = strategy.position_size > 0
+shortPosition = strategy.position_size < 0
+longEntryPrice = longPosition ? strategy.position_avg_price : na
+shortEntryPrice = shortPosition ? strategy.position_avg_price : na
 
-// 平仓逻辑：首先判断卖出信号，先执行卖出
-if activeSellSignal
-    strategy.close('long', comment = '平仓')
-
-hasOpenTrade = strategy.opentrades > 0
-entryPrice = hasOpenTrade ? strategy.opentrades.entry_price(strategy.opentrades - 1) : na
-
-// 止损与移动止盈价格
-stopLossPrice = not na(entryPrice) ? entryPrice * (1 - 0.01 * stopLossPercent) : na
-moveStopProfitStartPrice = not na(entryPrice) ? entryPrice * (1 + 0.01 * moveStopProfitStartPercent) : na
-
-var bool trailingStopSwitch = false
-var float highestCloseSinceEntry = na
-var float movingTargetPrice = na
-
-if strategy.position_size > 0 and not na(entryPrice)
-    highestCloseSinceEntry := na(highestCloseSinceEntry) ? close : math.max(highestCloseSinceEntry, close)
-    if not trailingStopSwitch and not na(moveStopProfitStartPrice) and close >= moveStopProfitStartPrice
-        trailingStopSwitch := true
-    if trailingStopSwitch
-        movingTargetPrice := entryPrice + (highestCloseSinceEntry - entryPrice) * (1 - 0.01 * profitCallbackPercent)
+// 记录入场时的 ATR，用于波动止损
+var float atrAtLongEntry = na
+var float atrAtShortEntry = na
+if longPosition
+    atrAtLongEntry := strategy.position_size[1] <= 0 ? xATR : nz(atrAtLongEntry, xATR)
 else
-    trailingStopSwitch := false
-    highestCloseSinceEntry := na
-    movingTargetPrice := na
+    atrAtLongEntry := na
 
-if not na(stopLossPrice)
-    strategy.exit('止损或止盈', 'long', stop = trailingStopSwitch and not na(movingTargetPrice) ? movingTargetPrice : stopLossPrice)
+if shortPosition
+    atrAtShortEntry := strategy.position_size[1] >= 0 ? xATR : nz(atrAtShortEntry, xATR)
+else
+    atrAtShortEntry := na
+
+// 多头止损与移动止盈
+percentStopLong = not na(longEntryPrice) ? longEntryPrice * (1 - 0.01 * stopLossPercent) : na
+atrStopLong = not na(longEntryPrice) and not na(atrAtLongEntry) ? longEntryPrice - atrAtLongEntry * atrStopMultiplier : na
+stopLossPriceLong = useAtrStop and not na(atrStopLong) ? atrStopLong : percentStopLong
+moveStopStartLong = not na(longEntryPrice) ? longEntryPrice * (1 + 0.01 * moveStopProfitStartPercent) : na
+
+var bool trailingStopSwitchLong = false
+var float highestCloseSinceEntryLong = na
+var float movingTargetPriceLong = na
+
+if longPosition and not na(longEntryPrice)
+    highestCloseSinceEntryLong := na(highestCloseSinceEntryLong) ? close : math.max(highestCloseSinceEntryLong, close)
+    if not trailingStopSwitchLong and not na(moveStopStartLong) and close >= moveStopStartLong
+        trailingStopSwitchLong := true
+    if trailingStopSwitchLong
+        movingTargetPriceLong := longEntryPrice + (highestCloseSinceEntryLong - longEntryPrice) * (1 - 0.01 * profitCallbackPercent)
+else
+    trailingStopSwitchLong := false
+    highestCloseSinceEntryLong := na
+    movingTargetPriceLong := na
+
+if longPosition and not na(stopLossPriceLong)
+    strategy.exit('止损或止盈_多', 'long', stop = trailingStopSwitchLong and not na(movingTargetPriceLong) ? movingTargetPriceLong : stopLossPriceLong)
+
+// 空头止损与移动止盈
+percentStopShort = not na(shortEntryPrice) ? shortEntryPrice * (1 + 0.01 * stopLossPercent) : na
+atrStopShort = not na(shortEntryPrice) and not na(atrAtShortEntry) ? shortEntryPrice + atrAtShortEntry * atrStopMultiplier : na
+stopLossPriceShort = useAtrStop and not na(atrStopShort) ? atrStopShort : percentStopShort
+moveStopStartShort = not na(shortEntryPrice) ? shortEntryPrice * (1 - 0.01 * moveStopProfitStartPercent) : na
+
+var bool trailingStopSwitchShort = false
+var float lowestCloseSinceEntryShort = na
+var float movingTargetPriceShort = na
+
+if shortPosition and not na(shortEntryPrice)
+    lowestCloseSinceEntryShort := na(lowestCloseSinceEntryShort) ? close : math.min(lowestCloseSinceEntryShort, close)
+    if not trailingStopSwitchShort and not na(moveStopStartShort) and close <= moveStopStartShort
+        trailingStopSwitchShort := true
+    if trailingStopSwitchShort
+        movingTargetPriceShort := shortEntryPrice - (shortEntryPrice - lowestCloseSinceEntryShort) * (1 - 0.01 * profitCallbackPercent)
+else
+    trailingStopSwitchShort := false
+    lowestCloseSinceEntryShort := na
+    movingTargetPriceShort := na
+
+if shortPosition and not na(stopLossPriceShort)
+    strategy.exit('止损或止盈_空', 'short', stop = trailingStopSwitchShort and not na(movingTargetPriceShort) ? movingTargetPriceShort : stopLossPriceShort)
