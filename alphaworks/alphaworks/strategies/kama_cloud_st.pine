@@ -1,0 +1,72 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © mertenes3
+
+//@version=5
+strategy('KAMA Cloud ST',overlay = true,default_qty_type = strategy.percent_of_equity,default_qty_value = 100)
+import TradingView/ta/8
+
+
+kama(src,Length)=>
+    xPrice = src
+    xvnoise = math.abs(xPrice - xPrice[1])
+    nAMA = 0.0
+    nfastend = 0.666
+    nslowend = 0.0645
+    nsignal = math.abs(xPrice - xPrice[Length])
+    nnoise = math.sum(xvnoise, Length)
+    nefratio = nnoise != 0? nsignal / nnoise: 0
+    nsmooth = math.pow(nefratio * (nfastend - nslowend) + nslowend, 2) 
+    nAMA := nz(nAMA[1]) + nsmooth * (xPrice - nz(nAMA[1]))
+    nAMA
+
+
+
+src = ohlc4
+
+ma05  =  kama(src, 05) 
+ma10  =  kama(src, 10) 
+ma15  =  kama(src, 15) 
+ma20  =  kama(src, 20) 
+ma25  =  kama(src, 25) 
+ma30  = kama(src, 30) 
+ma35  =  kama(src, 35) 
+ma40  =  kama(src, 40) 
+ma45  =  kama(src, 45) 
+ma50  =  kama(src, 50) 
+ma55  =  kama(src, 55) 
+ma60  = kama(src, 60) 
+ma65  =  kama(src, 65) 
+ma70  =  kama(src, 70) 
+ma75  =  kama(src, 75) 
+ma80  = kama(src, 80) 
+ma85  = kama(src, 85) 
+ma90  = kama(src, 90) 
+ma100 =  kama(src, 100)
+
+totalDistance = ((ma05-ma10)/ma10 + (ma10-ma15)/ma15 + (ma15-ma20)/ma20 + (ma20-ma25)/ma25 +
+                 (ma25-ma30)/ma30 + (ma30-ma35)/ma35 + (ma35-ma40)/ma40 + (ma40-ma45)/ma45 +
+                 (ma45-ma50)/ma50 + (ma50-ma55)/ma55 + (ma55-ma60)/ma60 + (ma60-ma65)/ma65 +
+                 (ma65-ma70)/ma70 + (ma70-ma75)/ma75 + (ma75-ma80)/ma80 + (ma80-ma85)/ma85 +
+                 (ma85-ma90)/ma90 + (ma90-ma100)/ma100)/18
+
+
+p1 = plot(kama(close,100),color=color.gray,linewidth = 2)
+cloud=kama(close,100)*(1+totalDistance*10)
+p2 = plot(cloud,color=color.gray,linewidth = 2)
+fill(p1,p2,color=totalDistance>0?color.green:color.red)
+cloudma= kama(kama(close,100)*(1+totalDistance*10),10)
+p3 = plot(cloudma,color=color.gray,linewidth = 2)
+fill(p2,p3,color=cloud>cloudma?color.green:color.red)
+alertcondition(ta.crossover(totalDistance,0) or ta.crossunder(totalDistance,0),'Trend Change')
+
+
+
+
+[macdLine, signalLine, histLine] = ta.macd(cloud-kama(close,100), 12, 26, 9)
+
+
+if totalDistance>0 and cloud>cloudma and histLine>0
+    strategy.entry('long',strategy.long)
+if strategy.position_size>0 and cloud<cloudma
+    strategy.close('long')
+
