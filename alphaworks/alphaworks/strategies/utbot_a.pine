@@ -1,0 +1,42 @@
+//@version=4
+study(title="UT Bot Alerts", overlay = true)
+
+// Inputs
+sensitivityMultiplier = input(4,     title = "Key Vaule. 'This changes the sensitivity'")
+atrPeriod = input(300,    title = "ATR Period")
+useHeikinAshi = input(false, title = "Signals from Heikin Ashi Candles")
+
+atrValue  = atr(atrPeriod)
+atrDistance = sensitivityMultiplier * atrValue
+
+sourceSeries = useHeikinAshi ? security(heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = false) : close
+
+atrTrailingStop = 0.0
+atrTrailingStop := iff(sourceSeries > nz(atrTrailingStop[1], 0) and sourceSeries[1] > nz(atrTrailingStop[1], 0), max(nz(atrTrailingStop[1]), sourceSeries - atrDistance),
+   iff(sourceSeries < nz(atrTrailingStop[1], 0) and sourceSeries[1] < nz(atrTrailingStop[1], 0), min(nz(atrTrailingStop[1]), sourceSeries + atrDistance), 
+   iff(sourceSeries > nz(atrTrailingStop[1], 0), sourceSeries - atrDistance, sourceSeries + atrDistance)))
+ 
+trendDirection = 0   
+trendDirection :=	iff(sourceSeries[1] < nz(atrTrailingStop[1], 0) and sourceSeries > nz(atrTrailingStop[1], 0), 1,
+   iff(sourceSeries[1] > nz(atrTrailingStop[1], 0) and sourceSeries < nz(atrTrailingStop[1], 0), -1, nz(trendDirection[1], 0))) 
+   
+trendColor = trendDirection == -1 ? color.red: trendDirection == 1 ? color.green : color.blue 
+
+ema1   = ema(sourceSeries, 1)
+crossAboveStop = crossover(ema1, atrTrailingStop)
+crossBelowStop = crossover(atrTrailingStop, ema1)
+
+isBuySignal  = sourceSeries > atrTrailingStop and crossAboveStop 
+isSellSignal = sourceSeries < atrTrailingStop and crossBelowStop
+
+isBullBar  = sourceSeries > atrTrailingStop 
+isBearBar = sourceSeries < atrTrailingStop 
+
+plotshape(isBuySignal,  title = "Buy",  text = 'Buy',  style = shape.labelup,   location = location.belowbar, color= color.green, textcolor = color.white, transp = 0, size = size.tiny)
+plotshape(isSellSignal, title = "Sell", text = 'Sell', style = shape.labeldown, location = location.abovebar, color= color.red,   textcolor = color.white, transp = 0, size = size.tiny)
+
+barcolor(isBullBar  ? color.green : na)
+barcolor(isBearBar ? color.red   : na)
+
+alertcondition(isBuySignal,  "UT Long",  "UT Long")
+alertcondition(isSellSignal, "UT Short", "UT Short")

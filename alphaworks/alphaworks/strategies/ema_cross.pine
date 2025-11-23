@@ -1,0 +1,28 @@
+//@version=6
+indicator(title = 'EMA12与EMA200距离', shorttitle = 'EMA12-200距离', overlay = true, max_labels_count = 500)
+
+len1 = input.int(12, minval = 1, title = 'Length')
+src1 = input(close, title = 'Source')
+offset1 = input.int(title = 'Offset', defval = 0, minval = -500, maxval = 500)
+out1 = ta.ema(src1, len1)
+plot(out1, title = 'EMA12', color = color.new(#fff652, 0), offset = offset1, linewidth = 1)
+
+len2 = input.int(200, minval = 1, title = 'Length')
+src2 = input(close, title = 'Source')
+offset2 = input.int(title = 'Offset', defval = 0, minval = -500, maxval = 500)
+out2 = ta.ema(src2, len2)
+plot(out2, title = 'EMA200', color = color.new(color.red, 0), offset = offset2, linewidth = 1)
+
+emaDistance = math.abs(nz(out1) - nz(out2))
+emaDistanceText = 'ΔEMA ' + str.tostring(emaDistance, format.mintick)
+var label[] emaLabelBuffer = array.new_label()
+maxLabelCount = input.int(300, title = '最大文本标签数', minval = 1, maxval = 500)
+newLabel = label.new(bar_index, high, emaDistanceText, xloc = xloc.bar_index, yloc = yloc.abovebar, color = color.new(color.blue, 0), style = label.style_label_down, textcolor = color.white, size = size.tiny)
+array.push(emaLabelBuffer, newLabel)
+if array.size(emaLabelBuffer) > maxLabelCount
+    oldest = array.shift(emaLabelBuffer)
+    label.delete(oldest)
+
+distanceArrowThreshold = input.float(5.0, title = '距离阈值', step = 0.1)
+drawArrow = not na(emaDistance) and emaDistance > distanceArrowThreshold
+plotshape(drawArrow, title = '距离超过阈值箭头', style = shape.arrowup, location = location.belowbar, color = color.red, size = size.tiny)

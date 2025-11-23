@@ -1,0 +1,153 @@
+//@version=6
+strategy(title = 'DUT Bot Strategy', overlay = true, initial_capital = 1000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100, commission_type = strategy.commission.percent, commission_value = 0.04)
+
+// Inputs
+sensitivityMultiplier = input(4, title = 'Key Vaule. \'This changes the sensitivity\'')
+atrPeriod = input(300, title = 'ATR Period')
+useHeikinAshi = input(false, title = 'Signals from Heikin Ashi Candles')
+
+atrValue = ta.atr(atrPeriod)
+atrDistance = sensitivityMultiplier * atrValue
+
+sourceSeries = useHeikinAshi ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = barmerge.lookahead_off) : close
+
+atrTrailingStop = 0.0
+iff_1 = sourceSeries > nz(atrTrailingStop[1], 0) ? sourceSeries - atrDistance : sourceSeries + atrDistance
+iff_2 = sourceSeries < nz(atrTrailingStop[1], 0) and sourceSeries[1] < nz(atrTrailingStop[1], 0) ? math.min(nz(atrTrailingStop[1]), sourceSeries + atrDistance) : iff_1
+atrTrailingStop := sourceSeries > nz(atrTrailingStop[1], 0) and sourceSeries[1] > nz(atrTrailingStop[1], 0) ? math.max(nz(atrTrailingStop[1]), sourceSeries - atrDistance) : iff_2
+
+trendDirection = 0
+iff_3 = sourceSeries[1] > nz(atrTrailingStop[1], 0) and sourceSeries < nz(atrTrailingStop[1], 0) ? -1 : nz(trendDirection[1], 0)
+trendDirection := sourceSeries[1] < nz(atrTrailingStop[1], 0) and sourceSeries > nz(atrTrailingStop[1], 0) ? 1 : iff_3
+
+trendColor = trendDirection == -1 ? color.red : trendDirection == 1 ? color.green : color.blue
+
+ema1 = ta.ema(sourceSeries, 1)
+crossAboveStop = ta.crossover(ema1, atrTrailingStop)
+crossBelowStop = ta.crossover(atrTrailingStop, ema1)
+
+isBuySignal = sourceSeries > atrTrailingStop and crossAboveStop
+isSellSignal = sourceSeries < atrTrailingStop and crossBelowStop
+
+isBullBar = sourceSeries > atrTrailingStop
+isBearBar = sourceSeries < atrTrailingStop
+
+showBullBarColor1 = input.bool(false, title = 'Bar Color (Bull 1)')
+showBearBarColor1 = input.bool(false, title = 'Bar Color (Bear 1)')
+
+plotshape(isBuySignal, title = 'Buy', text = 'Buy', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny, display = display.all)
+plotshape(isSellSignal, title = 'Sell', text = 'Sell', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny, display = display.none)
+
+barcolor(showBullBarColor1 and isBullBar ? color.green : na)
+barcolor(showBearBarColor1 and isBearBar ? color.red : na)
+
+alertcondition(isBuySignal, 'UT Long', 'UT Long')
+alertcondition(isSellSignal, 'UT Short', 'UT Short')
+
+// Inputs
+a = input(6, title = 'Key Vaule. \'This changes the sensitivity\'')
+c = input(1, title = 'ATR Period')
+h = input(false, title = 'Signals from Heikin Ashi Candles')
+
+xATR = ta.atr(c)
+nLoss = a * xATR
+
+src = h ? request.security(ticker.heikinashi(syminfo.tickerid), timeframe.period, close, lookahead = barmerge.lookahead_off) : close
+
+xATRTrailingStop = 0.0
+iff_4 = src > nz(xATRTrailingStop[1], 0) ? src - nLoss : src + nLoss
+iff_5 = src < nz(xATRTrailingStop[1], 0) and src[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), src + nLoss) : iff_4
+xATRTrailingStop := src > nz(xATRTrailingStop[1], 0) and src[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), src - nLoss) : iff_5
+
+pos = 0
+iff_6 = src[1] > nz(xATRTrailingStop[1], 0) and src < nz(xATRTrailingStop[1], 0) ? -1 : nz(pos[1], 0)
+pos := src[1] < nz(xATRTrailingStop[1], 0) and src > nz(xATRTrailingStop[1], 0) ? 1 : iff_6
+
+xcolor = pos == -1 ? color.red : pos == 1 ? color.green : color.blue
+
+ema = ta.ema(src, 1)
+above = ta.crossover(ema, xATRTrailingStop)
+below = ta.crossover(xATRTrailingStop, ema)
+
+buy = src > xATRTrailingStop and above
+sell = src < xATRTrailingStop and below
+
+barbuy = src > xATRTrailingStop
+barsell = src < xATRTrailingStop
+
+showBullBarColor2 = input.bool(false, title = 'Bar Color (Bull 2)')
+showBearBarColor2 = input.bool(false, title = 'Bar Color (Bear 2)')
+
+plotshape(buy, title = 'Buy', text = 'Buy', style = shape.labelup, location = location.belowbar, color = color.new(color.green, 0), textcolor = color.new(color.white, 0), size = size.tiny, display = display.none)
+plotshape(sell, title = 'Sell', text = 'Sell', style = shape.labeldown, location = location.abovebar, color = color.new(color.red, 0), textcolor = color.new(color.white, 0), size = size.tiny, display = display.all)
+
+barcolor(showBullBarColor2 and barbuy ? color.green : na)
+barcolor(showBearBarColor2 and barsell ? color.red : na)
+
+alertcondition(buy, 'UT Long', 'UT Long')
+alertcondition(sell, 'UT Short', 'UT Short')
+
+
+signal_length = input.int(title = 'Signal Smoothing', minval = 1, maxval = 200, defval = 200)
+sma_signal = input(title = 'Simple MA (Signal Line)', defval = true)
+
+lin_reg = input(title = 'Lin Reg', defval = true)
+linreg_length = input.int(title = 'Linear Regression Length', minval = 1, maxval = 200, defval = 11)
+
+bopen = lin_reg ? ta.linreg(open, linreg_length, 0) : open
+bhigh = lin_reg ? ta.linreg(high, linreg_length, 0) : high
+blow = lin_reg ? ta.linreg(low, linreg_length, 0) : low
+bclose = lin_reg ? ta.linreg(close, linreg_length, 0) : close
+
+r = bopen < bclose
+
+signal = sma_signal ? ta.sma(bclose, signal_length) : ta.ema(bclose, signal_length)
+
+plotcandle(r ? bopen : na, r ? bhigh : na, r ? blow : na, r ? bclose : na, title = 'LinReg Candles', color = color.green, wickcolor = color.green, bordercolor = color.green, editable = true)
+plotcandle(r ? na : bopen, r ? na : bhigh, r ? na : blow, r ? na : bclose, title = 'LinReg Candles', color = color.red, wickcolor = color.red, bordercolor = color.red, editable = true)
+
+plot(signal, color = color.new(color.white, 0))
+
+distanceThreshold = input.float(4.0, title = '做多距离阈值', step = 0.1)
+enableShort = input.bool(true, title = '开启做空')
+shortDistanceThreshold = input.float(4.0, title = '做空距离阈值', step = 0.1)
+showDailyCloseMarker = input.bool(true, title = '标记每日收盘')
+closePositionsAtEOD = input.bool(true, title = '收盘平仓')
+
+distanceToSignal = math.abs(bclose - signal)
+buyDistanceText = 'Δ ' + str.tostring(distanceToSignal, format.mintick)
+sellDistanceText = buyDistanceText
+
+var label buyDistLabel = na
+var label sellDistLabel = na
+if isBuySignal
+    buyDistLabel := label.new(bar_index, low, buyDistanceText, xloc = xloc.bar_index, yloc = yloc.belowbar, color = color.green, style = label.style_label_up, textcolor = color.white, size = size.tiny)
+    buyDistLabel
+if sell
+    sellDistLabel := label.new(bar_index, high, sellDistanceText, xloc = xloc.bar_index, yloc = yloc.abovebar, color = color.red, style = label.style_label_down, textcolor = color.white, size = size.tiny)
+    sellDistLabel
+
+enterLong = isBuySignal and (bclose < signal) and (distanceToSignal > distanceThreshold)
+if enterLong
+    strategy.entry('Long', strategy.long)
+if sell
+    strategy.close('Long')
+
+enterShort = enableShort and sell and (bclose > signal) and (distanceToSignal > shortDistanceThreshold)
+if enterShort
+    strategy.entry('Short', strategy.short)
+if isBuySignal and strategy.position_size < 0
+    strategy.close('Short')
+
+longArrow = (bclose < signal) and (distanceToSignal > distanceThreshold)
+shortArrow = (bclose > signal) and (distanceToSignal > shortDistanceThreshold)
+plotshape(longArrow, title = '做多阈值箭头', style = shape.arrowup, location = location.bottom, color = color.new(color.green, 0), size = size.tiny)
+plotshape(shortArrow, title = '做空阈值箭头', style = shape.arrowdown, location = location.top, color = color.new(color.red, 0), size = size.tiny)
+
+isEODBar = time_close == time_close("D")
+plotshape(showDailyCloseMarker and isEODBar, title = '每日收盘标记', style = shape.triangledown, location = location.top, color = color.new(color.purple, 0), size = size.tiny)
+if closePositionsAtEOD and isEODBar
+    if strategy.position_size > 0
+        strategy.close('Long')
+    if strategy.position_size < 0
+        strategy.close('Short')

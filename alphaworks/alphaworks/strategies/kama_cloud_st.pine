@@ -5,6 +5,13 @@
 strategy('KAMA Cloud ST',overlay = true,default_qty_type = strategy.percent_of_equity,default_qty_value = 100)
 import TradingView/ta/8
 
+const int defaultBacktestStart = 1577836800000
+const int defaultBacktestEnd = 1767225540000
+startBacktest = input.time(title='回测开始时间', defval=defaultBacktestStart)
+endBacktest = input.time(title='回测结束时间', defval=defaultBacktestEnd)
+isInBacktestWindow = time >= startBacktest and time <= endBacktest
+enableShort = input.bool(title='启用做空', defval=false)
+
 
 kama(src,Length)=>
     xPrice = src
@@ -18,7 +25,6 @@ kama(src,Length)=>
     nsmooth = math.pow(nefratio * (nfastend - nslowend) + nslowend, 2) 
     nAMA := nz(nAMA[1]) + nsmooth * (xPrice - nz(nAMA[1]))
     nAMA
-
 
 
 src = ohlc4
@@ -65,8 +71,12 @@ alertcondition(ta.crossover(totalDistance,0) or ta.crossunder(totalDistance,0),'
 [macdLine, signalLine, histLine] = ta.macd(cloud-kama(close,100), 12, 26, 9)
 
 
-if totalDistance>0 and cloud>cloudma and histLine>0
+if isInBacktestWindow and totalDistance>0 and cloud>cloudma and histLine>0
     strategy.entry('long',strategy.long)
-if strategy.position_size>0 and cloud<cloudma
+if strategy.position_size>0 and (cloud<cloudma or not isInBacktestWindow)
     strategy.close('long')
 
+if enableShort and isInBacktestWindow and totalDistance<0 and cloud<cloudma and histLine<0
+    strategy.entry('short',strategy.short)
+if strategy.position_size<0 and (cloud>cloudma or not isInBacktestWindow)
+    strategy.close('short')
